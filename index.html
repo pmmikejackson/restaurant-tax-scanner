@@ -1422,9 +1422,9 @@
             summaryCard.style.color = 'white';
             summaryCard.innerHTML = `
                 <div class="tax-name" style="color: white;">Total Combined Rate</div>
-                <div class="tax-rate">${(taxData.totalRate * 100).toFixed(2)}%</div>
-                <div class="tax-description">Combined percentage rate for standard sales tax</div>
-                <div class="tax-applies-to" style="background: rgba(255,255,255,0.1);"><strong>Note:</strong> Fixed fees like bag taxes are additional</div>
+                <div class="tax-rate" style="color: white;">${(taxData.totalRate * 100).toFixed(2)}%</div>
+                <div class="tax-description" style="color: white;">Combined percentage rate for standard sales tax</div>
+                <div class="tax-applies-to" style="background: rgba(255,255,255,0.1); color: white;"><strong>Note:</strong> Fixed fees like bag taxes are additional</div>
             `;
             taxGrid.appendChild(summaryCard);
 
