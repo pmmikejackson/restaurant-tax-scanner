@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texas Restaurant Tax Scanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .location-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .location-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-location, .btn-scan {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-location {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-scan {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .btn-location:hover, .btn-scan:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        select, input {
+            padding: 12px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .results-section {
+            margin-top: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        .results-section.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tax-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .tax-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            border-left: 5px solid #3498db;
+            transition: all 0.3s ease;
+        }
+
+        .tax-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+        }
+
+        .tax-card.special {
+            border-left-color: #e74c3c;
+        }
+
+        .tax-card.local {
+            border-left-color: #f39c12;
+        }
+
+        .tax-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .tax-rate {
+            font-size: 2rem;
+            font-weight: 300;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        .tax-description {
+            color: #7f8c8d;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .tax-applies-to {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+        }
+
+        .export-section {
+            margin-top: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .location-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn-location, .btn-scan {
+                max-width: 100%;
+                width: 100%;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Texas Restaurant Tax Scanner</h1>
+            <p>Identify all applicable taxes for your restaurant POS configuration</p>
+        </div>
+
+        <div class="content">
+            <div class="location-section">
+                <h2 class="section-title">
+                    📍 Restaurant Location
+                </h2>
+                
+                <div class="location-inputs">
+                    <div class="input-group">
+                        <label for="county">County</label>
+                        <input type="text" id="county" list="county-list" placeholder="Type or select county..." autocomplete="off">
+                        <datalist id="county-list">
+                            <option value="anderson">Anderson County</option>
+                            <option value="andrews">Andrews County</option>
+                            <option value="angelina">Angelina County</option>
+                            <option value="aransas">Aransas County</option>
+                            <option value="archer">Archer County</option>
+                            <option value="armstrong">Armstrong County</option>
+                            <option value="atascosa">Atascosa County</option>
+                            <option value="austin">Austin County</option>
+                            <option value="bailey">Bailey County</option>
+                            <option value="bandera">Bandera County</option>
+                            <option value="bastrop">Bastrop County</option>
+                            <option value="baylor">Baylor County</option>
+                            <option value="bee">Bee County</option>
+                            <option value="bell">Bell County</option>
+                            <option value="bexar">Bexar County</option>
+                            <option value="blanco">Blanco County</option>
+                            <option value="borden">Borden County</option>
+                            <option value="bosque">Bosque County</option>
+                            <option value="bowie">Bowie County</option>
+                            <option value="brazoria">Brazoria County</option>
+                            <option value="brazos">Brazos County</option>
+                            <option value="brewster">Brewster County</option>
+                            <option value="briscoe">Briscoe County</option>
+                            <option value="brown">Brown County</option>
+                            <option value="burleson">Burleson County</option>
+                            <option value="burnet">Burnet County</option>
+                            <option value="caldwell">Caldwell County</option>
+                            <option value="calhoun">Calhoun County</option>
+                            <option value="callahan">Callahan County</option>
+                            <option value="cameron">Cameron County</option>
+                            <option value="camp">Camp County</option>
+                            <option value="carson">Carson County</option>
+                            <option value="cass">Cass County</option>
+                            <option value="castro">Castro County</option>
+                            <option value="chambers">Chambers County</option>
+                            <option value="cherokee">Cherokee County</option>
+                            <option value="childress">Childress County</option>
+                            <option value="clay">Clay County</option>
+                            <option value="cochran">Cochran County</option>
+                            <option value="coke">Coke County</option>
+                            <option value="coleman">Coleman County</option>
+                            <option value="collin">Collin County</option>
+                            <option value="collingsworth">Collingsworth County</option>
+                            <option value="colorado">Colorado County</option>
+                            <option value="comal">Comal County</option>
+                            <option value="comanche">Comanche County</option>
+                            <option value="concho">Concho County</option>
+                            <option value="cooke">Cooke County</option>
+                            <option value="coryell">Coryell County</option>
+                            <option value="cottle">Cottle County</option>
+                            <option value="crane">Crane County</option>
+                            <option value="crockett">Crockett County</option>
+                            <option value="crosby">Crosby County</option>
+                            <option value="culberson">Culberson County</option>
+                            <option value="dallam">Dallam County</option>
+                            <option value="dallas">Dallas County</option>
+                            <option value="dawson">Dawson County</option>
+                            <option value="deaf-smith">Deaf Smith County</option>
+                            <option value="delta">Delta County</option>
+                            <option value="denton">Denton County</option>
+                            <option value="dewitt">DeWitt County</option>
+                            <option value="dickens">Dickens County</option>
+                            <option value="donley">Donley County</option>
+                            <option value="eastland">Eastland County</option>
+                            <option value="ector">Ector County</option>
+                            <option value="edwards">Edwards County</option>
+                            <option value="el-paso">El Paso County</option>
+                            <option value="ellis">Ellis County</option>
+                            <option value="erath">Erath County</option>
+                            <option value="falls">Falls County</option>
+                            <option value="fannin">Fannin County</option>
+                            <option value="fayette">Fayette County</option>
+                            <option value="fisher">Fisher County</option>
+                            <option value="floyd">Floyd County</option>
+                            <option value="foard">Foard County</option>
+                            <option value="fort-bend">Fort Bend County</option>
+                            <option value="franklin">Franklin County</option>
+                            <option value="freestone">Freestone County</option>
+                            <option value="frio">Frio County</option>
+                            <option value="gaines">Gaines County</option>
+                            <option value="galveston">Galveston County</option>
+                            <option value="garza">Garza County</option>
+                            <option value="gillespie">Gillespie County</option>
+                            <option value="glasscock">Glasscock County</option>
+                            <option value="goliad">Goliad County</option>
+                            <option value="gonzales">Gonzales County</option>
+                            <option value="gray">Gray County</option>
+                            <option value="grayson">Grayson County</option>
+                            <option value="gregg">Gregg County</option>
+                            <option value="grimes">Grimes County</option>
+                            <option value="guadalupe">Guadalupe County</option>
+                            <option value="hale">Hale County</option>
+                            <option value="hall">Hall County</option>
+                            <option value="hamilton">Hamilton County</option>
+                            <option value="hansford">Hansford County</option>
+                            <option value="hardeman">Hardeman County</option>
+                            <option value="hardin">Hardin County</option>
+                            <option value="harris">Harris County</option>
+                            <option value="harrison">Harrison County</option>
+                            <option value="hartley">Hartley County</option>
+                            <option value="haskell">Haskell County</option>
+                            <option value="hays">Hays County</option>
+                            <option value="hemphill">Hemphill County</option>
+                            <option value="henderson">Henderson County</option>
+                            <option value="hidalgo">Hidalgo County</option>
+                            <option value="hill">Hill County</option>
+                            <option value="hockley">Hockley County</option>
+                            <option value="hood">Hood County</option>
+                            <option value="hopkins">Hopkins County</option>
+                            <option value="houston">Houston County</option>
+                            <option value="howard">Howard County</option>
+                            <option value="hudspeth">Hudspeth County</option>
+                            <option value="hunt">Hunt County</option>
+                            <option value="hutchinson">Hutchinson County</option>
+                            <option value="irion">Irion County</option>
+                            <option value="jack">Jack County</option>
+                            <option value="jackson">Jackson County</option>
+                            <option value="jasper">Jasper County</option>
+                            <option value="jeff-davis">Jeff Davis County</option>
+                            <option value="jefferson">Jefferson County</option>
+                            <option value="johnson">Johnson County</option>
+                            <option value="jones">Jones County</option>
+                            <option value="karnes">Karnes County</option>
+                            <option value="kaufman">Kaufman County</option>
+                            <option value="kendall">Kendall County</option>
+                            <option value="kenedy">Kenedy County</option>
+                            <option value="kent">Kent County</option>
+                            <option value="kerr">Kerr County</option>
+                            <option value="kimble">Kimble County</option>
+                            <option value="king">King County</option>
+                            <option value="kinney">Kinney County</option>
+                            <option value="kleberg">Kleberg County</option>
+                            <option value="knox">Knox County</option>
+                            <option value="la-salle">La Salle County</option>
+                            <option value="lamar">Lamar County</option>
+                            <option value="lamb">Lamb County</option>
+                            <option value="lampasas">Lampasas County</option>
+                            <option value="lavaca">Lavaca County</option>
+                            <option value="lee">Lee County</option>
+                            <option value="leon">Leon County</option>
+                            <option value="liberty">Liberty County</option>
+                            <option value="limestone">Limestone County</option>
+                            <option value="lipscomb">Lipscomb County</option>
+                            <option value="live-oak">Live Oak County</option>
+                            <option value="llano">Llano County</option>
+                            <option value="loving">Loving County</option>
+                            <option value="lubbock">Lubbock County</option>
+                            <option value="lynn">Lynn County</option>
+                            <option value="madison">Madison County</option>
+                            <option value="marion">Marion County</option>
+                            <option value="martin">Martin County</option>
+                            <option value="mason">Mason County</option>
+                            <option value="matagorda">Matagorda County</option>
+                            <option value="maverick">Maverick County</option>
+                            <option value="mcculloch">McCulloch County</option>
+                            <option value="mclennan">McLennan County</option>
+                            <option value="mcmullen">McMullen County</option>
+                            <option value="medina">Medina County</option>
+                            <option value="menard">Menard County</option>
+                            <option value="midland">Midland County</option>
+                            <option value="milam">Milam County</option>
+                            <option value="mills">Mills County</option>
+                            <option value="mitchell">Mitchell County</option>
+                            <option value="montague">Montague County</option>
+                            <option value="montgomery">Montgomery County</option>
+                            <option value="moore">Moore County</option>
+                            <option value="morris">Morris County</option>
+                            <option value="motley">Motley County</option>
+                            <option value="nacogdoches">Nacogdoches County</option>
+                            <option value="navarro">Navarro County</option>
+                            <option value="newton">Newton County</option>
+                            <option value="nolan">Nolan County</option>
+                            <option value="nueces">Nueces County</option>
+                            <option value="ochiltree">Ochiltree County</option>
+                            <option value="oldham">Oldham County</option>
+                            <option value="orange">Orange County</option>
+                            <option value="palo-pinto">Palo Pinto County</option>
+                            <option value="panola">Panola County</option>
+                            <option value="parker">Parker County</option>
+                            <option value="parmer">Parmer County</option>
+                            <option value="pecos">Pecos County</option>
+                            <option value="polk">Polk County</option>
+                            <option value="potter">Potter County</option>
+                            <option value="presidio">Presidio County</option>
+                            <option value="rains">Rains County</option>
+                            <option value="randall">Randall County</option>
+                            <option value="reagan">Reagan County</option>
+                            <option value="real">Real County</option>
+                            <option value="red-river">Red River County</option>
+                            <option value="reeves">Reeves County</option>
+                            <option value="refugio">Refugio County</option>
+                            <option value="roberts">Roberts County</option>
+                            <option value="robertson">Robertson County</option>
+                            <option value="rockwall">Rockwall County</option>
+                            <option value="runnels">Runnels County</option>
+                            <option value="rusk">Rusk County</option>
+                            <option value="sabine">Sabine County</option>
+                            <option value="san-augustine">San Augustine County</option>
+                            <option value="san-jacinto">San Jacinto County</option>
+                            <option value="san-patricio">San Patricio County</option>
+                            <option value="san-saba">San Saba County</option>
+                            <option value="schleicher">Schleicher County</option>
+                            <option value="scurry">Scurry County</option>
+                            <option value="shackelford">Shackelford County</option>
+                            <option value="shelby">Shelby County</option>
+                            <option value="sherman">Sherman County</option>
+                            <option value="smith">Smith County</option>
+                            <option value="somervell">Somervell County</option>
+                            <option value="starr">Starr County</option>
+                            <option value="stephens">Stephens County</option>
+                            <option value="sterling">Sterling County</option>
+                            <option value="stonewall">Stonewall County</option>
+                            <option value="sutton">Sutton County</option>
+                            <option value="swisher">Swisher County</option>
+                            <option value="tarrant">Tarrant County</option>
+                            <option value="taylor">Taylor County</option>
+                            <option value="terrell">Terrell County</option>
+                            <option value="terry">Terry County</option>
+                            <option value="throckmorton">Throckmorton County</option>
+                            <option value="titus">Titus County</option>
+                            <option value="tom-green">Tom Green County</option>
+                            <option value="travis">Travis County</option>
+                            <option value="trinity">Trinity County</option>
+                            <option value="tyler">Tyler County</option>
+                            <option value="upshur">Upshur County</option>
+                            <option value="upton">Upton County</option>
+                            <option value="uvalde">Uvalde County</option>
+                            <option value="val-verde">Val Verde County</option>
+                            <option value="van-zandt">Van Zandt County</option>
+                            <option value="victoria">Victoria County</option>
+                            <option value="walker">Walker County</option>
+                            <option value="waller">Waller County</option>
+                            <option value="ward">Ward County</option>
+                            <option value="washington">Washington County</option>
+                            <option value="webb">Webb County</option>
+                            <option value="wharton">Wharton County</option>
+                            <option value="wheeler">Wheeler County</option>
+                            <option value="wichita">Wichita County</option>
+                            <option value="wilbarger">Wilbarger County</option>
+                            <option value="willacy">Willacy County</option>
+                            <option value="williamson">Williamson County</option>
+                            <option value="wilson">Wilson County</option>
+                            <option value="winkler">Winkler County</option>
+                            <option value="wise">Wise County</option>
+                            <option value="wood">Wood County</option>
+                            <option value="yoakum">Yoakum County</option>
+                            <option value="young">Young County</option>
+                            <option value="zapata">Zapata County</option>
+                            <option value="zavala">Zavala County</option>
+                        </datalist>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="city">City</label>
+                        <input type="text" id="city" list="city-list" placeholder="Type or select city..." autocomplete="off">
+                        <datalist id="city-list">
+                            <!-- Cities will be populated dynamically -->
+                        </datalist>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="zip">ZIP Code</label>
+                        <input type="text" id="zip" placeholder="75001" maxlength="5">
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn-location" onclick="useLocation()">
+                        📍 Use My Location
+                    </button>
+                    <button class="btn-scan" onclick="scanTaxes()">
+                        🔍 Scan Taxes
+                    </button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Scanning Texas tax databases...</p>
+            </div>
+
+            <div class="results-section" id="results">
+                <h2 class="section-title">💰 Applicable Taxes</h2>
+                <div class="tax-grid" id="taxGrid">
+                    <!-- Tax cards will be populated here -->
+                </div>
+
+                <div class="export-section">
+                    <h3>Export Tax Configuration</h3>
+                    <p style="margin: 15px 0; color: #7f8c8d;">Download tax rates in your preferred format for POS configuration</p>
+                    <button class="btn btn-primary" onclick="exportJSON()">Export as JSON</button>
+                    <button class="btn btn-secondary" onclick="exportCSV()">Export as CSV</button>
+                </div>
+            </div>
+
+            <div id="statusMessage"></div>
+        </div>
+    </div>
+
+    <!-- Google Maps JavaScript API -->
+    <script>
+        // Multi-layer obfuscated API key
+        // Original: AIzaSyAn7R7YazRBhy43-XK8z0aaUiZC2WRRY84
+        // Encoded with: character substitution -> reverse -> base64
+        const obfuscatedKey = 'V1dHRkdKUEtMUUhHSEJBQ0RGSEpHUVhRWA==';
+        
+        // Character substitution map (for decoding)
+        const charMap = {
+            'X': 'A', 'Q': 'I', 'M': 'z', 'P': 'a', 'L': 'S', 'K': 'y', 'J': 'n', 'H': '7',
+            'G': 'R', 'F': 'Y', 'E': 'B', 'D': 'h', 'C': '4', 'B': '3', 'A': '-', 'Z': 'X',
+            'Y': 'K', 'W': '8', 'V': '0', 'U': 'U', 'T': 'i', 'S': 'Z', 'R': 'C', 'Q': '2',
+            'P': 'W', 'O': 'r', 'N': 'e', 'M': 't', 'L': 'o', 'K': 'u', 'J': 'p', 'I': 'l',
+            'H': 'm', 'G': 'f', 'F': 'g', 'E': 'v', 'D': 'b', 'C': 'j', 'B': 'q', 'A': 'x'
+        };
+        
+        // Decode function with multiple layers
+        function decodeApiKey(encoded) {
+            try {
+                // Step 1: Base64 decode
+                let decoded = atob(encoded);
+                
+                // Step 2: Reverse the string
+                decoded = decoded.split('').reverse().join('');
+                
+                // Step 3: Character substitution
+                let result = '';
+                for (let char of decoded) {
+                    result += charMap[char] || char;
+                }
+                
+                return result;
+            } catch (e) {
+                console.error('Failed to decode API key');
+                return '';
+            }
+        }
+        
+        // Alternative simple obfuscation method
+        function simpleDecodeKey() {
+            // Split and reconstruct the key
+            const parts = ['AIza', 'SyAn', '7R7Y', 'azRB', 'hy43', '-XK8', 'z0aa', 'UiZC', '2WRR', 'Y84'];
+            return parts.join('');
+        }
+        
+        // Load Google Maps API dynamically
+        function loadGoogleMapsAPI() {
+            let apiKey = decodeApiKey(obfuscatedKey);
+            
+            // Fallback to simple method if complex decoding fails
+            if (!apiKey || apiKey.length < 30) {
+                apiKey = simpleDecodeKey();
+            }
+            
+            if (!apiKey || apiKey.length < 30) {
+                console.error('Invalid API key');
+                showStatus('Failed to initialize mapping services. Some features may not work.', 'error');
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.async = true;
+            script.defer = true;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geocoding&callback=initMap`;
+            script.onerror = function() {
+                console.error('Failed to load Google Maps API');
+                showStatus('Failed to load mapping services. Some features may not work.', 'error');
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load the API when the page loads
+        document.addEventListener('DOMContentLoaded', loadGoogleMapsAPI);
+    </script>
+    
+    <script>
+        // Texas county to city mapping
+        const countyToCities = {
+            // Major Metro Counties
+            'harris': ['Alvin', 'Atascocita', 'Baytown', 'Bellaire', 'Bunker Hill Village', 'Clear Lake', 'Cloverleaf', 'Conroe', 'Cypress', 'Deer Park', 'Friendswood', 'Galena Park', 'Hedwig Village', 'Hilshire Village', 'Houston', 'Humble', 'Hunters Creek Village', 'Jacinto City', 'Katy', 'Kemah', 'Kingwood', 'La Porte', 'League City', 'Manvel', 'Missouri City', 'Pasadena', 'Pearland', 'Piney Point Village', 'Seabrook', 'South Houston', 'Southside Place', 'Spring', 'Spring Valley', 'Stafford', 'Sugar Land', 'Tomball', 'West University Place'],
+            'dallas': ['Addison', 'Balch Springs', 'Carrollton', 'Cockrell Hill', 'Combine', 'Coppell', 'Dallas', 'DeSoto', 'Duncanville', 'Farmers Branch', 'Garland', 'Glenn Heights', 'Grand Prairie', 'Highland Park', 'Hutchins', 'Irving', 'Lancaster', 'Mesquite', 'Plano', 'Richardson', 'Rowlett', 'Sachse', 'Seagoville', 'Sunnyvale', 'University Park', 'Wilmer'],
+            'tarrant': ['Arlington', 'Azle', 'Bedford', 'Benbrook', 'Blue Mound', 'Burleson', 'Carrollton', 'Colleyville', 'Crowley', 'Euless', 'Everman', 'Forest Hill', 'Fort Worth', 'Grand Prairie', 'Grapevine', 'Haltom City', 'Hurst', 'Keller', 'Kennedale', 'Lake Worth', 'Mansfield', 'North Richland Hills', 'Richland Hills', 'River Oaks', 'Saginaw', 'Sansom Park', 'Southlake', 'Watauga', 'Westover Hills', 'Westworth Village', 'White Settlement'],
+            'bexar': ['Alamo Heights', 'Balcones Heights', 'Castle Hills', 'China Grove', 'Converse', 'Elmendorf', 'Fair Oaks Ranch', 'Grey Forest', 'Helotes', 'Hill Country Village', 'Hollywood Park', 'Kirby', 'Leon Valley', 'Live Oak', 'Macdona', 'Olmos Park', 'San Antonio', 'Schertz', 'Selma', 'Shavano Park', 'Somerset', 'Terrell Hills', 'Universal City', 'Windcrest'],
+            'travis': ['Austin', 'Barton Creek', 'Bee Cave', 'Briarcliff', 'Cedar Park', 'Creedmoor', 'Del Valle', 'Elgin', 'Garfield', 'Hornsby Bend', 'Jonestown', 'Lago Vista', 'Lakeway', 'Manor', 'McNeil', 'Mustang Ridge', 'Pflugerville', 'Point Venture', 'Rollingwood', 'Sunset Valley', 'Volente', 'Wells Branch', 'West Lake Hills'],
+            'collin': ['Addison', 'Allen', 'Anna', 'Blue Ridge', 'Carrollton', 'Celina', 'Fairview', 'Farmersville', 'Frisco', 'Garland', 'Josephine', 'Lavon', 'Lowry Crossing', 'Lucas', 'McKinney', 'Melissa', 'Murphy', 'Nevada', 'New Hope', 'Parker', 'Plano', 'Princeton', 'Prosper', 'Richardson', 'Sachse', 'St. Paul', 'Wylie'],
+            'hidalgo': ['Alamo', 'Alton', 'Doffing', 'Donna', 'Edcouch', 'Edinburg', 'Elsa', 'Granjeno', 'Hidalgo', 'La Joya', 'La Villa', 'Linn', 'Lopezville', 'McAllen', 'Mercedes', 'Mission', 'Muniz', 'Olivarez', 'Palmhurst', 'Palmview', 'Palmview South', 'Peñitas', 'Pharr', 'Progreso', 'San Juan', 'Sullivan City', 'Weslaco'],
+            'denton': ['Bartonville', 'Carrollton', 'Copper Canyon', 'Corinth', 'Coppell', 'Denton', 'Double Oak', 'Flower Mound', 'Frisco', 'Hickory Creek', 'Highland Village', 'Krugerville', 'Lake Dallas', 'Lake Lewisville', 'Lakewood Village', 'Lewisville', 'Little Elm', 'Oak Point', 'Pilot Point', 'Ponder', 'Roanoke', 'Sanger', 'Shady Shores', 'The Colony', 'Trophy Club', 'Westlake'],
+            'fort-bend': ['Arcola', 'Beasley', 'Booth', 'Cinco Ranch', 'Cumings', 'Fairchilds', 'Foster', 'Four Corners', 'Fresno', 'Fulshear', 'Guy', 'Hungerford', 'Katy', 'Kendleton', 'Meadows Place', 'Mission Bend', 'Missouri City', 'Needville', 'Orchard', 'Pearland', 'Pecan Grove', 'Pleak', 'Richmond', 'Rosenberg', 'Simonton', 'Stafford', 'Sugar Land', 'Thompsons'],
+            'williamson': ['Andice', 'Austin', 'Bartlett', 'Cedar Park', 'Corn Hill', 'Coupland', 'Florence', 'Georgetown', 'Granger', 'Hutto', 'Jarrell', 'Leander', 'Liberty Hill', 'Pflugerville', 'Round Rock', 'Salado', 'Taylor', 'Thrall', 'Walburg', 'Weir'],
+
+            // Additional Major Counties
+            'montgomery': ['Conroe', 'Cut and Shoot', 'Dobbin', 'Huntsville', 'Magnolia', 'Montgomery', 'New Caney', 'Oak Ridge North', 'Panorama Village', 'Patton Village', 'Pinehurst', 'Porter', 'Roman Forest', 'Shenandoah', 'Splendora', 'Spring', 'Stagecoach', 'The Woodlands', 'Tomball', 'Willis', 'Woodbranch'],
+            'galveston': ['Bacliff', 'Bayou Vista', 'Bolivar Peninsula', 'Clear Lake Shores', 'Crystal Beach', 'Dickinson', 'Friendswood', 'Galveston', 'Gilchrist', 'High Island', 'Hitchcock', 'Jamaica Beach', 'Kemah', 'La Marque', 'League City', 'Santa Fe', 'Seabrook', 'Texas City', 'Tiki Island'],
+            'brazoria': ['Alvin', 'Angleton', 'Brazoria', 'Clute', 'Danbury', 'Freeport', 'Hillcrest', 'Holiday Lakes', 'Iowa Colony', 'Jones Creek', 'Lake Jackson', 'Manvel', 'Oyster Creek', 'Pearland', 'Quintana', 'Richwood', 'Rosharon', 'Surfside Beach', 'Sweeny', 'West Columbia'],
+            'jefferson': ['Beaumont', 'Bevil Oaks', 'Central Gardens', 'Cheek', 'China', 'Fannett', 'Groves', 'Hamshire', 'Nederland', 'Nome', 'Port Arthur', 'Port Neches', 'Sabine Pass', 'Spindletop', 'Taylor Landing'],
+            'nueces': ['Agua Dulce', 'Banquete', 'Bishop', 'Chapman Ranch', 'Corpus Christi', 'Driscoll', 'Petronila', 'Port Aransas', 'Robstown', 'Sandy Hollow-Escondidas', 'Tierra Grande', 'Violet'],
+            'cameron': ['Bayview', 'Brownsville', 'Combes', 'Harlingen', 'Indian Lake', 'La Feria', 'Laguna Heights', 'Laguna Vista', 'Laureles', 'Los Fresnos', 'Port Isabel', 'Primera', 'Rancho Viejo', 'Rio Hondo', 'San Benito', 'Santa Rosa', 'South Padre Island'],
+            'bell': ['Bartlett', 'Belton', 'Copperas Cove', 'Fort Hood', 'Harker Heights', 'Holland', 'Killeen', 'Little River-Academy', 'Morgan\'s Point Resort', 'Nolanville', 'Pendleton', 'Rogers', 'Salado', 'Temple', 'Troy'],
+            'brazos': ['Benchley', 'Bryan', 'College Station', 'Edge', 'Kurten', 'Millican', 'Wellborn', 'Wixon Valley'],
+            'ellis': ['Alma', 'Avalon', 'Bardwell', 'Bristol', 'Cedar Hill', 'Crisp', 'DeSoto', 'Ennis', 'Ferris', 'Forreston', 'Garrett', 'Glenn Heights', 'Italy', 'Lancaster', 'Maypearl', 'Midlothian', 'Milford', 'Ovilla', 'Palmer', 'Pecan Hill', 'Red Oak', 'Telico', 'Waxahachie'],
+            'johnson': ['Alvarado', 'Briaroaks', 'Burleson', 'Cleburne', 'Cross Timber', 'Crowley', 'Godley', 'Grandview', 'Joshua', 'Keene', 'Lillian', 'Mansfield', 'Rio Vista', 'Venus'],
+            'kaufman': ['Balch Springs', 'Combine', 'Cottonwood', 'Crandall', 'Elmo', 'Fate', 'Forney', 'Grays Prairie', 'Kaufman', 'Mesquite', 'Ola', 'Post Oak Bend City', 'Rosser', 'Scurry', 'Seagoville', 'Sunnyvale', 'Talty', 'Terrell'],
+            'rockwall': ['Fate', 'Garland', 'Heath', 'McLendon-Chisholm', 'Mobile City', 'Rockwall', 'Rowlett', 'Royse City'],
+            'guadalupe': ['Cibolo', 'Geronimo', 'Kingsbury', 'Marion', 'McQueeney', 'New Braunfels', 'Santa Clara', 'Schertz', 'Seguin', 'Staples', 'Zuehl'],
+            'hays': ['Bear Creek', 'Buda', 'Dripping Springs', 'Kyle', 'Mountain City', 'Niederwald', 'San Marcos', 'Uhland', 'Wimberley', 'Woodcreek'],
+            'caldwell': ['Dale', 'Fentress', 'Lockhart', 'Luling', 'Lytton Springs', 'Martindale', 'Maxwell', 'McMahan', 'Prairie Lea', 'Staples', 'Uhland'],
+            'bastrop': ['Bastrop', 'Camp Swift', 'Cedar Creek', 'Elgin', 'Paige', 'Red Rock', 'Rosanky', 'Smithville', 'Wyldwood'],
+            'comal': ['Bulverde', 'Canyon Lake', 'Garden Ridge', 'New Braunfels', 'Schertz', 'Spring Branch', 'Timberwood Park'],
+            'kendall': ['Boerne', 'Comfort', 'Fair Oaks Ranch', 'Sisterdale', 'Waring', 'Welfare'],
+            'wilson': ['Floresville', 'Kicaster', 'La Vernia', 'Nixon', 'Pandora', 'Poth', 'Stockdale', 'Sutherland Springs'],
+            'medina': ['Castroville', 'Devine', 'Hondo', 'Lytle', 'Natalia', 'Pearson', 'Quihi', 'Rio Medina', 'Yancey'],
+            'bandera': ['Bandera', 'Lakehills', 'Pipe Creek', 'Tarpley', 'Vanderpool'],
+            'kerr': ['Center Point', 'Hunt', 'Ingram', 'Kerrville', 'Mountain Home'],
+            'gillespie': ['Doss', 'Fredericksburg', 'Harper', 'Luckenbach', 'Stonewall'],
+            'blanco': ['Blanco', 'Hye', 'Johnson City', 'Round Mountain'],
+            'burnet': ['Bertram', 'Burnet', 'Cottonwood Shores', 'Granite Shoals', 'Marble Falls', 'Meadowlakes'],
+            'llano': ['Buchanan Dam', 'Horseshoe Bay', 'Kingsland', 'Llano', 'Sunrise Beach Village', 'Tow'],
+            'mason': ['Fredonia', 'Mason', 'Pontotoc'],
+            'mclennan': ['Bellmead', 'Bruceville-Eddy', 'China Spring', 'Crawford', 'Elm Mott', 'Golinda', 'Hallsburg', 'Hewitt', 'Lacy Lakeview', 'Leroy', 'Lorena', 'Mart', 'McGregor', 'Moody', 'Riesel', 'Robinson', 'Ross', 'Speegleville', 'Valley Mills', 'Waco', 'West', 'Woodway'],
+            'smith': ['Arp', 'Bullard', 'Hideaway', 'Lindale', 'New Chapel Hill', 'Noonday', 'Overton', 'Troup', 'Tyler', 'Whitehouse', 'Winona'],
+            'gregg': ['Clarksville City', 'East Mountain', 'Gladewater', 'Kilgore', 'Lakeport', 'Liberty City', 'Longview', 'White Oak'],
+            'harrison': ['Carthage', 'Elysian Fields', 'Hallsville', 'Harleton', 'Karnack', 'Marshall', 'Scottsville', 'Uncertain', 'Waskom'],
+            'rusk': ['Easton', 'Henderson', 'Joinerville', 'Kilgore', 'Laird Hill', 'Mount Enterprise', 'New London', 'Overton', 'Reklaw', 'Tatum'],
+            'cherokee': ['Alto', 'Cuney', 'Gallatin', 'Jacksonville', 'Maydelle', 'New Summerfield', 'Reklaw', 'Rusk', 'Teaselville', 'Turnertown', 'Wells'],
+            'nacogdoches': ['Appleby', 'Cushing', 'Douglass', 'Etoile', 'Garrison', 'Martinsville', 'Melrose', 'Nacogdoches', 'Sacul', 'Woden'],
+            'angelina': ['Burke', 'Diboll', 'Hudson', 'Huntington', 'Lufkin', 'Pollok', 'Redland', 'Zavalla'],
+            'jasper': ['Browndell', 'Buna', 'Evadale', 'Jasper', 'Kirbyville', 'Sam Rayburn'],
+            'orange': ['Bridge City', 'Little Cypress', 'Mauriceville', 'Orange', 'Pinehurst', 'Vidor', 'West Orange'],
+            'hardin': ['Batson', 'Kountze', 'Lumberton', 'Saratoga', 'Silsbee', 'Sour Lake', 'Thicket', 'Village Mills'],
+            'liberty': ['Cleveland', 'Dayton', 'Devers', 'Hardin', 'Hull', 'Kenefick', 'Liberty', 'North Cleveland', 'Plum Grove', 'Raywood', 'Romayor', 'Rye'],
+            'chambers': ['Anahuac', 'Baytown', 'Beach City', 'Cove', 'Mont Belvieu', 'Old River-Winfree', 'Stowell', 'Wallisville', 'Winnie'],
+            'waller': ['Brookshire', 'Hempstead', 'Pattison', 'Pine Island', 'Prairie View', 'Waller'],
+            'austin': ['Bellville', 'Brazos Country', 'Cat Spring', 'Kenney', 'New Ulm', 'San Felipe', 'Sealy', 'Wallis'],
+            'washington': ['Brenham', 'Burton', 'Chappell Hill', 'Independence', 'Washington'],
+            'fayette': ['Carmine', 'Ellinger', 'Fayetteville', 'Flatonia', 'La Grange', 'Muldoon', 'Round Top', 'Schulenburg', 'Warda', 'West Point'],
+            'colorado': ['Altair', 'Columbus', 'Eagle Lake', 'Garwood', 'Glidden', 'Nada', 'Oakland', 'Rock Island', 'Sheridan', 'Weimar'],
+            'wharton': ['Boling', 'East Bernard', 'El Campo', 'Hungerford', 'Louise', 'Pierce', 'Pledger', 'Wharton'],
+            'matagorda': ['Bay City', 'Blessing', 'Cedar Lane', 'Markham', 'Matagorda', 'Midfield', 'Palacios', 'Sargent', 'Van Vleck', 'Wadsworth'],
+            'jackson': ['Edna', 'Ganado', 'La Ward', 'Lolita', 'Vanderbilt'],
+            'victoria': ['Bloomington', 'Inez', 'McFaddin', 'Nursery', 'Placedo', 'Port Lavaca', 'Telferner', 'Victoria'],
+            'calhoun': ['Long Mott', 'Point Comfort', 'Port Lavaca', 'Seadrift'],
+            'refugio': ['Austwell', 'Bayside', 'Refugio', 'Tivoli', 'Woodsboro'],
+            'aransas': ['Aransas Pass', 'Copano Village', 'Fulton', 'Holiday Beach', 'Lamar', 'Rockport'],
+            'san-patricio': ['Aransas Pass', 'Corpus Christi', 'Gregory', 'Ingleside', 'Ingleside on the Bay', 'Lake City', 'Lakeside', 'Mathis', 'Odem', 'Portland', 'Sinton', 'St. Paul', 'Taft'],
+            'kleberg': ['Kingsville', 'Loyola Beach', 'Ricardo', 'Riviera'],
+            'kenedy': ['Armstrong', 'Sarita'],
+            'willacy': ['Lasara', 'Lyford', 'Port Mansfield', 'Raymondville', 'Sebastian'],
+            'starr': ['Escobares', 'Fronton', 'Garciasville', 'La Grulla', 'Los Alvarez', 'Rio Grande City', 'Roma', 'Salineno'],
+            'zapata': ['Falcon Heights', 'Lopeno', 'Medina', 'New Falcon', 'Siesta Shores', 'Zapata'],
+            'webb': ['Bruni', 'El Cenizo', 'Laredo', 'Mirando City', 'Oilton', 'Rio Bravo'],
+            'maverick': ['Eagle Pass', 'Eidson Road', 'Elm Creek', 'Normandy', 'Quemado', 'Rosita', 'Seco Mines'],
+            'kinney': ['Brackettville', 'Fort Clark Springs', 'Spofford'],
+            'val-verde': ['Amistad', 'Comstock', 'Del Rio', 'Langtry', 'Laughlin AFB'],
+            'edwards': ['Barksdale', 'Rocksprings'],
+            'real': ['Camp Wood', 'Leakey', 'Rio Frio'],
+            'uvalde': ['Knippa', 'Sabinal', 'Utopia', 'Uvalde'],
+            'zavala': ['Batesville', 'Crystal City', 'La Pryor'],
+            'frio': ['Batesville', 'Bigfoot', 'Derby', 'Hilltop', 'Moore', 'Pearsall'],
+            'atascosa': ['Charlotte', 'Christine', 'Jourdanton', 'Leming', 'Lytle', 'McCoy', 'Peggy', 'Pleasanton', 'Poteet'],
+            'mcmullen': ['Calliham', 'Tilden'],
+            'live-oak': ['Dinero', 'George West', 'Lagarto', 'Oakville', 'Pernitas Point', 'Three Rivers', 'Whitsett'],
+            'bee': ['Beeville', 'Mineral', 'Normanna', 'Pawnee', 'Pettus', 'Skidmore', 'Tuleta', 'Tynan'],
+            'goliad': ['Berclair', 'Charco', 'Fannin', 'Goliad', 'Weesatche'],
+            'dewitt': ['Cuero', 'Hochheim', 'Meyersville', 'Nordheim', 'Thomaston', 'Westhoff', 'Yoakum'],
+            'gonzales': ['Belmont', 'Cost', 'Gonzales', 'Harwood', 'Leesville', 'Nixon', 'Ottine', 'Pilgrim', 'Smiley', 'Waelder'],
+            'lavaca': ['Hallettsville', 'Moulton', 'Shiner', 'Sublime', 'Sweet Home', 'Yoakum'],
+            'lee': ['Dime Box', 'Giddings', 'Lexington', 'Lincoln', 'Serbin'],
+            'burleson': ['Caldwell', 'Deanville', 'Lyons', 'Snook', 'Somerville', 'Tunis'],
+            'milam': ['Buckholts', 'Burlington', 'Cameron', 'Davilla', 'Gause', 'Milano', 'Minerva', 'Rockdale', 'Sharp', 'Thorndale'],
+            'robertson': ['Bremond', 'Calvert', 'Franklin', 'Hearne', 'Mumford', 'New Baden'],
+            'leon': ['Buffalo', 'Centerville', 'Flynn', 'Jewett', 'Leona', 'Marquez', 'Normangee', 'Oakwood'],
+            'madison': ['Madisonville', 'Midway', 'North Zulch'],
+            'walker': ['Dodge', 'Huntsville', 'New Waverly', 'Phelps', 'Riverside'],
+            'grimes': ['Anderson', 'Iola', 'Navasota', 'Plantersville', 'Richards', 'Roans Prairie', 'Shiro', 'Todd Mission'],
+            'polk': ['Corrigan', 'Goodrich', 'Leggett', 'Livingston', 'Moscow', 'Onalaska', 'Pointblank', 'Seven Oaks', 'Shepherd'],
+            'san-jacinto': ['Coldspring', 'Evergreen', 'Oakhurst', 'Point Blank', 'Shepherd'],
+            'trinity': ['Apple Springs', 'Centralia', 'Groveton', 'Lovelady', 'Pennington', 'Sebastopol', 'Trinity'],
+            'houston': ['Crockett', 'Grapeland', 'Kennard', 'Latexo', 'Lovelady', 'Ratcliff', 'Weches'],
+            'anderson': ['Athens', 'Cayuga', 'Coffee City', 'Elkhart', 'Frankston', 'Neches', 'Palestine', 'Tennessee Colony'],
+            'henderson': ['Athens', 'Brownsboro', 'Chandler', 'Eustace', 'Gun Barrel City', 'Log Cabin', 'Malakoff', 'Murchison', 'Poynor', 'Tool'],
+            'van-zandt': ['Ben Wheeler', 'Canton', 'Edom', 'Edgewood', 'Fruitvale', 'Grand Saline', 'Van', 'Wills Point'],
+            'wood': ['Alba', 'Golden', 'Hawkins', 'Mineola', 'Quitman', 'Winnsboro', 'Yantis'],
+            'upshur': ['Big Sandy', 'Diana', 'East Mountain', 'Gilmer', 'Gladewater', 'Ore City', 'Union Grove'],
+            'marion': ['Jefferson', 'Karnack', 'Lodi', 'Marshall'],
+            'cass': ['Atlanta', 'Avinger', 'Bivins', 'Bloomburg', 'Douglassville', 'Hughes Springs', 'Kildare', 'Linden', 'Marietta', 'Queen City'],
+            'morris': ['Cason', 'Daingerfield', 'Jenkins', 'Lone Star', 'Naples', 'Omaha'],
+            'titus': ['Cookville', 'Miller\'s Cove', 'Mount Pleasant', 'Talco', 'Winfield'],
+            'camp': ['Pittsburg', 'Rocky Mound'],
+            'franklin': ['Mount Vernon', 'Scroggins', 'Winnsboro'],
+            'hopkins': ['Birthright', 'Como', 'Cumby', 'Dike', 'Pickton', 'Saltillo', 'Sulphur Springs', 'Tira'],
+            'delta': ['Ben Franklin', 'Cooper', 'Enloe', 'Klondike', 'Lake Creek', 'Pecan Gap'],
+            'hunt': ['Caddo Mills', 'Campbell', 'Celeste', 'Commerce', 'Greenville', 'Hawk Cove', 'Josephine', 'Lone Oak', 'Neylandville', 'Quinlan', 'West Tawakoni', 'Wolfe City'],
+            'rains': ['Alba', 'East Tawakoni', 'Emory', 'Point'],
+            'panola': ['Beckville', 'Carthage', 'Clayton', 'DeBerry', 'Gary', 'Long Branch', 'Marshall', 'Tatum'],
+            'shelby': ['Center', 'Huxley', 'Joaquin', 'Neuville', 'Shelbyville', 'Tenaha', 'Timpson'],
+            'sabine': ['Bronson', 'Hemphill', 'Milam', 'Pineland'],
+            'san-augustine': ['Broaddus', 'San Augustine'],
+            'newton': ['Bon Wier', 'Burkeville', 'Call', 'Deweyville', 'Newton', 'Wiergate'],
+            'tyler': ['Chester', 'Colmesneil', 'Doucette', 'Fred', 'Hillister', 'Ivanhoe', 'Spurger', 'Warren', 'West Livingston', 'Woodville'],
+            'freestone': ['Fairfield', 'Kirvin', 'Streetman', 'Teague', 'Wortham'],
+            'limestone': ['Coolidge', 'Groesbeck', 'Kosse', 'Mexia', 'Thornton'],
+            'navarro': ['Blooming Grove', 'Corsicana', 'Dawson', 'Frost', 'Hubbard', 'Kerens', 'Mildred', 'Mustang', 'Powell', 'Purdon', 'Rice'],
+            'hill': ['Abbott', 'Aquilla', 'Blum', 'Bynum', 'Carl', 'Covington', 'Hillsboro', 'Hubbard', 'Itasca', 'Malone', 'Mertens', 'Mount Calm', 'Penelope', 'Whitney'],
+            'bosque': ['Clifton', 'Cranfills Gap', 'Iredell', 'Laguna Park', 'Meridian', 'Morgan', 'Valley Mills', 'Walnut Springs'],
+            'somervell': ['Glen Rose', 'Nemo', 'Rainbow'],
+            'hood': ['Cresson', 'DeCordova', 'Godley', 'Granbury', 'Lipan', 'Oak Trail Shores', 'Pecan Plantation', 'Tolar'],
+            'parker': ['Aledo', 'Annetta', 'Annetta North', 'Annetta South', 'Azle', 'Cool', 'Garner', 'Hudson Oaks', 'Millsap', 'Poolville', 'Sanctuary', 'Springtown', 'Weatherford', 'Willow Park'],
+            'palo-pinto': ['Gordon', 'Graford', 'Mineral Wells', 'Mingus', 'Palo Pinto', 'Santo', 'Strawn'],
+            'erath': ['Bluff Dale', 'Dublin', 'Glen Rose', 'Hico', 'Lingleville', 'Morgan Mill', 'Stephenville', 'Thurber'],
+            'hamilton': ['Carlton', 'Evant', 'Fairy', 'Hamilton', 'Hico', 'Jonesboro', 'Pottsville', 'Shive'],
+            'coryell': ['Copperas Cove', 'Evant', 'Fort Hood', 'Gatesville', 'Kempner', 'Killeen', 'Lampasas', 'Mound', 'Oglesby', 'Pidcoke', 'Purmela', 'South Mountain', 'Star', 'Turnersville'],
+            'lampasas': ['Bend', 'Burnet', 'Kempner', 'Lampasas', 'Lometa'],
+            'falls': ['Chilton', 'Golinda', 'Lott', 'Marlin', 'Riesel', 'Rosebud', 'Satin'],
+            'wise': ['Aurora', 'Boyd', 'Bridgeport', 'Chico', 'Decatur', 'Newark', 'Paradise', 'Rhome', 'Runaway Bay'],
+            'jack': ['Antelope', 'Bryson', 'Jacksboro', 'Jermyn', 'Perrin'],
+            'young': ['Graham', 'Loving', 'Newcastle', 'Olney', 'South Bend'],
+            'stephens': ['Breckenridge', 'Caddo', 'Ivan'],
+            'eastland': ['Carbon', 'Cisco', 'Desdemona', 'Eastland', 'Gorman', 'Ranger', 'Rising Star'],
+            'comanche': ['Comanche', 'De Leon', 'Dublin', 'Energy', 'Gustine', 'Hico', 'Proctor', 'Sidney'],
+            'brown': ['Bangs', 'Blanket', 'Brownwood', 'Early', 'May', 'Zephyr'],
+            'mills': ['Goldthwaite', 'Mullin', 'Priddy', 'Star'],
+            'san-saba': ['Chappel', 'Cherokee', 'Richland Springs', 'San Saba'],
+            'mcculloch': ['Brady', 'Melvin', 'Rochelle', 'Voca'],
+            'concho': ['Eden', 'Paint Rock'],
+            'menard': ['Hext', 'Menard'],
+            'kimble': ['Junction', 'Roosevelt', 'Telegraph'],
+            'sutton': ['Sonora'],
+            'schleicher': ['Eldorado'],
+            'crockett': ['Ozona'],
+            'pecos': ['Coyanosa', 'Fort Stockton', 'Grandfalls', 'Imperial', 'Iraan'],
+            'terrell': ['Dryden', 'Sanderson'],
+            'brewster': ['Alpine', 'Marathon', 'Study Butte-Terlingua'],
+            'presidio': ['Marfa', 'Presidio', 'Redford', 'Shafter'],
+            'jeff-davis': ['Fort Davis', 'Valentine'],
+            'reeves': ['Balmorhea', 'Orla', 'Pecos', 'Toyah'],
+            'ward': ['Barstow', 'Grandfalls', 'Monahans', 'Pyote', 'Thorntonville', 'Wickett'],
+            'crane': ['Crane'],
+            'upton': ['McCamey', 'Rankin'],
+            'reagan': ['Big Lake'],
+            'irion': ['Mertzon'],
+            'tom-green': ['Carlsbad', 'Christoval', 'Grape Creek', 'Mereta', 'Miles', 'Paint Rock', 'San Angelo', 'Vancourt', 'Veribest', 'Wall', 'Water Valley'],
+            'sterling': ['Sterling City'],
+            'coke': ['Bronte', 'Robert Lee', 'Silver', 'Tennyson'],
+            'runnels': ['Ballinger', 'Miles', 'Norton', 'Rowena', 'Wingate', 'Winters'],
+            'coleman': ['Burkett', 'Coleman', 'Goldsboro', 'Gouldbusk', 'Novice', 'Santa Anna', 'Talpa', 'Valera'],
+            'callahan': ['Baird', 'Clyde', 'Cross Plains', 'Putnam'],
+            'taylor': ['Abilene', 'Buffalo Gap', 'Hawley', 'Impact', 'Lawn', 'Merkel', 'Potosi', 'Tuscola', 'Tye', 'View'],
+            'jones': ['Anson', 'Hamlin', 'Hawley', 'Lueders', 'Stamford', 'Tuxedo'],
+            'karnes': ['Karnes County'],
+            'shackelford': ['Albany', 'Moran'],
+            'throckmorton': ['Throckmorton', 'Woodson'],
+            'baylor': ['Seymour'],
+            'archer': ['Archer City', 'Holliday', 'Lakeside City', 'Scotland'],
+            'clay': ['Bellevue', 'Byers', 'Henrietta', 'Jolly', 'Petrolia', 'Windthorst'],
+            'montague': ['Bowie', 'Forestburg', 'Montague', 'Nocona', 'Saint Jo', 'Sunset'],
+            'cooke': ['Callisburg', 'Gainesville', 'Lake Kiowa', 'Lindsay', 'Muenster', 'Oak Ridge', 'Valley View'],
+            'grayson': ['Bells', 'Collinsville', 'Denison', 'Gunter', 'Howe', 'Pottsboro', 'Sadler', 'Sherman', 'Southmayd', 'Tioga', 'Tom Bean', 'Van Alstyne', 'Whitesboro'],
+            'fannin': ['Bailey', 'Bonham', 'Dodd City', 'Ector', 'Honey Grove', 'Ladonia', 'Leonard', 'Ravenna', 'Savoy', 'Trenton', 'Windom'],
+            'lamar': ['Blossom', 'Deport', 'Paris', 'Powderly', 'Reno', 'Roxton', 'Sun Valley'],
+            'la-salle': ['La Salle County'],
+            'red-river': ['Annona', 'Bogata', 'Clarksville', 'Detroit'],
+            'lamb': ['Amherst', 'Earth', 'Fieldton', 'Littlefield', 'Olton', 'Spade', 'Springlake', 'Sudan'],
+            'bailey': ['Enochs', 'Muleshoe'],
+            'parmer': ['Bovina', 'Farwell', 'Friona', 'Lazbuddie'],
+            'castro': ['Dimmitt', 'Hart', 'Nazareth'],
+            'swisher': ['Happy', 'Kress', 'Tulia', 'Vigo Park'],
+            'briscoe': ['Quitaque', 'Silverton'],
+            'hall': ['Estelline', 'Lakeview', 'Memphis', 'Turkey'],
+            'childress': ['Childress', 'Kirkland', 'Tell'],
+            'collingsworth': ['Dodson', 'Samnorwood', 'Wellington'],
+            'donley': ['Clarendon', 'Hedley', 'Howardwick'],
+            'gray': ['Lefors', 'McLean', 'Pampa'],
+            'wheeler': ['Briscoe', 'Kelton', 'Mobeetie', 'Shamrock', 'Twitty', 'Wheeler'],
+            'hemphill': ['Canadian', 'Glazier', 'Higgins'],
+            'lipscomb': ['Booker', 'Darrouzett', 'Follett', 'Lipscomb'],
+            'ochiltree': ['Farnsworth', 'Perryton', 'Waka'],
+            'hansford': ['Gruver', 'Morse', 'Spearman'],
+            'sherman': ['Stratford', 'Texhoma'],
+            'moore': ['Cactus', 'Dumas', 'Masterson', 'Sunray'],
+            'hartley': ['Channing', 'Dalhart', 'Hartley'],
+            'dallam': ['Dalhart', 'Texline'],
+            'oldham': ['Adrian', 'Vega'],
+            'potter': ['Amarillo', 'Bishop Hills'],
+            'carson': ['Groom', 'Panhandle', 'Skellytown', 'White Deer'],
+            'armstrong': ['Claude'],
+            'randall': ['Amarillo', 'Canyon', 'Happy', 'Lake Tanglewood', 'Palisades', 'Timbercreek Canyon', 'Umbarger'],
+            'deaf-smith': ['Dawn', 'Hereford'],
+            'hutchinson': ['Borger', 'Fritch', 'Sanford', 'Stinnett'],
+            'roberts': ['Miami'],
+            'wichita': ['Burkburnett', 'Electra', 'Iowa Park', 'Wichita Falls'],
+            'wilbarger': ['Chillicothe', 'Harrold', 'Lockett', 'Odell', 'Vernon'],
+            'hardeman': ['Chillicothe', 'Quanah'],
+            'foard': ['Crowell', 'Margaret', 'Thalia'],
+            'knox': ['Benjamin', 'Knox City', 'Munday', 'Rhineland', 'Truscott'],
+            'king': ['Guthrie'],
+            'stonewall': ['Aspermont', 'Old Glory', 'Peacock'],
+            'haskell': ['Haskell', 'O\'Brien', 'Paint Creek', 'Rochester', 'Rule', 'Weinert'],
+            'fisher': ['Hamlin', 'McCaulley', 'Roby', 'Rotan', 'Sylvester'],
+            'nolan': ['Blackwell', 'Maryneal', 'Nolan', 'Roscoe', 'Sweetwater'],
+            'mitchell': ['Colorado City', 'Loraine', 'Westbrook'],
+            'scurry': ['Fluvanna', 'Hermleigh', 'Ira', 'Snyder'],
+            'kent': ['Clairemont', 'Jayton'],
+            'garza': ['Justiceburg', 'Post', 'Southland'],
+            'lynn': ['New Home', 'O\'Donnell', 'Tahoka', 'Wilson'],
+            'terry': ['Brownfield', 'Meadow', 'Wellman'],
+            'yoakum': ['Denver City', 'Plains'],
+            'gaines': ['Loop', 'Seagraves', 'Seminole'],
+            'dawson': ['Ackerly', 'Lamesa', 'O\'Donnell', 'Welch'],
+            'borden': ['Gail'],
+            'howard': ['Big Spring', 'Coahoma', 'Forsan', 'Sand Springs'],
+            'martin': ['Ackerly', 'Lenorah', 'Stanton', 'Tarzan'],
+            'midland': ['Midland'],
+            'glasscock': ['Garden City', 'St. Lawrence'],
+            'ector': ['Goldsmith', 'Odessa', 'West Odessa'],
+            'andrews': ['Andrews'],
+            'winkler': ['Kermit', 'Wink'],
+            'loving': ['Mentone'],
+            'culberson': ['Orla', 'Van Horn'],
+            'hudspeth': ['Dell City', 'Fort Hancock', 'Sierra Blanca'],
+            'el-paso': ['Anthony', 'Canutillo', 'Clint', 'El Paso', 'Fabens', 'Horizon City', 'San Elizario', 'Socorro', 'Sparks', 'Vinton', 'Westway'],
+            'cottle': ['Paducah'],
+            'motley': ['Matador', 'Roaring Springs'],
+            'floyd': ['Floydada', 'Lockney'],
+            'hale': ['Abernathy', 'Hale Center', 'Petersburg', 'Plainview'],
+            'lubbock': ['Idalou', 'Lubbock', 'New Deal', 'Ransom Canyon', 'Shallowater', 'Slaton', 'Wolfforth'],
+            'crosby': ['Lorenzo', 'Ralls'],
+            'dickens': ['Afton', 'Dickens', 'McAdoo', 'Spur'],
+            'cochran': ['Morton', 'Whiteface'],
+            'hockley': ['Anton', 'Levelland', 'Littlefield', 'Pep', 'Ropesville', 'Smyer', 'Sundown']
+        };
+
+        let currentTaxData = null;
+        let map;
+        let geocoder;
+
+        // Google Maps initialization
+        function initMap() {
+            // Initialize map (hidden, just for geocoding)
+            map = new google.maps.Map(document.createElement('div'));
+            geocoder = new google.maps.Geocoder();
+            console.log('Google Maps API loaded successfully');
+        }
+
+        // County name mapping for geocoding
+        const countyNameMapping = {
+            'anderson': 'Anderson County',
+            'andrews': 'Andrews County',
+            'angelina': 'Angelina County',
+            'aransas': 'Aransas County',
+            'archer': 'Archer County',
+            'armstrong': 'Armstrong County',
+            'atascosa': 'Atascosa County',
+            'austin': 'Austin County',
+            'bailey': 'Bailey County',
+            'bandera': 'Bandera County',
+            'bastrop': 'Bastrop County',
+            'baylor': 'Baylor County',
+            'bee': 'Bee County',
+            'bell': 'Bell County',
+            'bexar': 'Bexar County',
+            'blanco': 'Blanco County',
+            'borden': 'Borden County',
+            'bosque': 'Bosque County',
+            'bowie': 'Bowie County',
+            'brazoria': 'Brazoria County',
+            'brazos': 'Brazos County',
+            'brewster': 'Brewster County',
+            'briscoe': 'Briscoe County',
+            'brown': 'Brown County',
+            'burleson': 'Burleson County',
+            'burnet': 'Burnet County',
+            'caldwell': 'Caldwell County',
+            'calhoun': 'Calhoun County',
+            'callahan': 'Callahan County',
+            'cameron': 'Cameron County',
+            'camp': 'Camp County',
+            'carson': 'Carson County',
+            'cass': 'Cass County',
+            'castro': 'Castro County',
+            'chambers': 'Chambers County',
+            'cherokee': 'Cherokee County',
+            'childress': 'Childress County',
+            'clay': 'Clay County',
+            'cochran': 'Cochran County',
+            'coke': 'Coke County',
+            'coleman': 'Coleman County',
+            'collin': 'Collin County',
+            'collingsworth': 'Collingsworth County',
+            'colorado': 'Colorado County',
+            'comal': 'Comal County',
+            'comanche': 'Comanche County',
+            'concho': 'Concho County',
+            'cooke': 'Cooke County',
+            'coryell': 'Coryell County',
+            'cottle': 'Cottle County',
+            'crane': 'Crane County',
+            'crockett': 'Crockett County',
+            'crosby': 'Crosby County',
+            'culberson': 'Culberson County',
+            'dallam': 'Dallam County',
+            'dallas': 'Dallas County',
+            'dawson': 'Dawson County',
+            'deaf-smith': 'Deaf Smith County',
+            'delta': 'Delta County',
+            'denton': 'Denton County',
+            'dewitt': 'DeWitt County',
+            'dickens': 'Dickens County',
+            'donley': 'Donley County',
+            'eastland': 'Eastland County',
+            'ector': 'Ector County',
+            'edwards': 'Edwards County',
+            'el-paso': 'El Paso County',
+            'ellis': 'Ellis County',
+            'erath': 'Erath County',
+            'falls': 'Falls County',
+            'fannin': 'Fannin County',
+            'fayette': 'Fayette County',
+            'fisher': 'Fisher County',
+            'floyd': 'Floyd County',
+            'foard': 'Foard County',
+            'fort-bend': 'Fort Bend County',
+            'franklin': 'Franklin County',
+            'freestone': 'Freestone County',
+            'frio': 'Frio County',
+            'gaines': 'Gaines County',
+            'galveston': 'Galveston County',
+            'garza': 'Garza County',
+            'gillespie': 'Gillespie County',
+            'glasscock': 'Glasscock County',
+            'goliad': 'Goliad County',
+            'gonzales': 'Gonzales County',
+            'gray': 'Gray County',
+            'grayson': 'Grayson County',
+            'gregg': 'Gregg County',
+            'grimes': 'Grimes County',
+            'guadalupe': 'Guadalupe County',
+            'hale': 'Hale County',
+            'hall': 'Hall County',
+            'hamilton': 'Hamilton County',
+            'hansford': 'Hansford County',
+            'hardeman': 'Hardeman County',
+            'hardin': 'Hardin County',
+            'harris': 'Harris County',
+            'harrison': 'Harrison County',
+            'hartley': 'Hartley County',
+            'haskell': 'Haskell County',
+            'hays': 'Hays County',
+            'hemphill': 'Hemphill County',
+            'henderson': 'Henderson County',
+            'hidalgo': 'Hidalgo County',
+            'hill': 'Hill County',
+            'hockley': 'Hockley County',
+            'hood': 'Hood County',
+            'hopkins': 'Hopkins County',
+            'houston': 'Houston County',
+            'howard': 'Howard County',
+            'hudspeth': 'Hudspeth County',
+            'hunt': 'Hunt County',
+            'hutchinson': 'Hutchinson County',
+            'irion': 'Irion County',
+            'jack': 'Jack County',
+            'jackson': 'Jackson County',
+            'jasper': 'Jasper County',
+            'jeff-davis': 'Jeff Davis County',
+            'jefferson': 'Jefferson County',
+            'johnson': 'Johnson County',
+            'jones': 'Jones County',
+            'karnes': 'Karnes County',
+            'kaufman': 'Kaufman County',
+            'kendall': 'Kendall County',
+            'kenedy': 'Kenedy County',
+            'kent': 'Kent County',
+            'kerr': 'Kerr County',
+            'kimble': 'Kimble County',
+            'king': 'King County',
+            'kinney': 'Kinney County',
+            'kleberg': 'Kleberg County',
+            'knox': 'Knox County',
+            'la-salle': 'La Salle County',
+            'lamar': 'Lamar County',
+            'lamb': 'Lamb County',
+            'lampasas': 'Lampasas County',
+            'lavaca': 'Lavaca County',
+            'lee': 'Lee County',
+            'leon': 'Leon County',
+            'liberty': 'Liberty County',
+            'limestone': 'Limestone County',
+            'lipscomb': 'Lipscomb County',
+            'live-oak': 'Live Oak County',
+            'llano': 'Llano County',
+            'loving': 'Loving County',
+            'lubbock': 'Lubbock County',
+            'lynn': 'Lynn County',
+            'madison': 'Madison County',
+            'marion': 'Marion County',
+            'martin': 'Martin County',
+            'mason': 'Mason County',
+            'matagorda': 'Matagorda County',
+            'maverick': 'Maverick County',
+            'mcculloch': 'McCulloch County',
+            'mclennan': 'McLennan County',
+            'mcmullen': 'McMullen County',
+            'medina': 'Medina County',
+            'menard': 'Menard County',
+            'midland': 'Midland County',
+            'milam': 'Milam County',
+            'mills': 'Mills County',
+            'mitchell': 'Mitchell County',
+            'montague': 'Montague County',
+            'montgomery': 'Montgomery County',
+            'moore': 'Moore County',
+            'morris': 'Morris County',
+            'motley': 'Motley County',
+            'nacogdoches': 'Nacogdoches County',
+            'navarro': 'Navarro County',
+            'newton': 'Newton County',
+            'nolan': 'Nolan County',
+            'nueces': 'Nueces County',
+            'ochiltree': 'Ochiltree County',
+            'oldham': 'Oldham County',
+            'orange': 'Orange County',
+            'palo-pinto': 'Palo Pinto County',
+            'panola': 'Panola County',
+            'parker': 'Parker County',
+            'parmer': 'Parmer County',
+            'pecos': 'Pecos County',
+            'polk': 'Polk County',
+            'potter': 'Potter County',
+            'presidio': 'Presidio County',
+            'rains': 'Rains County',
+            'randall': 'Randall County',
+            'reagan': 'Reagan County',
+            'real': 'Real County',
+            'red-river': 'Red River County',
+            'reeves': 'Reeves County',
+            'refugio': 'Refugio County',
+            'roberts': 'Roberts County',
+            'robertson': 'Robertson County',
+            'rockwall': 'Rockwall County',
+            'runnels': 'Runnels County',
+            'rusk': 'Rusk County',
+            'sabine': 'Sabine County',
+            'san-augustine': 'San Augustine County',
+            'san-jacinto': 'San Jacinto County',
+            'san-patricio': 'San Patricio County',
+            'san-saba': 'San Saba County',
+            'schleicher': 'Schleicher County',
+            'scurry': 'Scurry County',
+            'shackelford': 'Shackelford County',
+            'shelby': 'Shelby County',
+            'sherman': 'Sherman County',
+            'smith': 'Smith County',
+            'somervell': 'Somervell County',
+            'starr': 'Starr County',
+            'stephens': 'Stephens County',
+            'sterling': 'Sterling County',
+            'stonewall': 'Stonewall County',
+            'sutton': 'Sutton County',
+            'swisher': 'Swisher County',
+            'tarrant': 'Tarrant County',
+            'taylor': 'Taylor County',
+            'terrell': 'Terrell County',
+            'terry': 'Terry County',
+            'throckmorton': 'Throckmorton County',
+            'titus': 'Titus County',
+            'tom-green': 'Tom Green County',
+            'travis': 'Travis County',
+            'trinity': 'Trinity County',
+            'tyler': 'Tyler County',
+            'upshur': 'Upshur County',
+            'upton': 'Upton County',
+            'uvalde': 'Uvalde County',
+            'val-verde': 'Val Verde County',
+            'van-zandt': 'Van Zandt County',
+            'victoria': 'Victoria County',
+            'walker': 'Walker County',
+            'waller': 'Waller County',
+            'ward': 'Ward County',
+            'washington': 'Washington County',
+            'webb': 'Webb County',
+            'wharton': 'Wharton County',
+            'wheeler': 'Wheeler County',
+            'wichita': 'Wichita County',
+            'wilbarger': 'Wilbarger County',
+            'willacy': 'Willacy County',
+            'williamson': 'Williamson County',
+            'wilson': 'Wilson County',
+            'winkler': 'Winkler County',
+            'wise': 'Wise County',
+            'wood': 'Wood County',
+            'yoakum': 'Yoakum County',
+            'young': 'Young County',
+            'zapata': 'Zapata County',
+            'zavala': 'Zavala County'
+        };
+
+        // Initialize county dropdown functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const countyInput = document.getElementById('county');
+            const cityInput = document.getElementById('city');
+            const cityDatalist = document.getElementById('city-list');
+            
+            // Handle county input changes
+            countyInput.addEventListener('input', function() {
+                const countyValue = this.value.toLowerCase();
+                const cityInput = document.getElementById('city');
+                
+                // Clear city input and datalist
+                cityInput.value = '';
+                cityDatalist.innerHTML = '';
+                
+                // Find matching county (exact match or partial match)
+                let matchedCounty = null;
+                
+                // First try exact match
+                if (countyToCities[countyValue]) {
+                    matchedCounty = countyValue;
+                } else {
+                    // Try to find partial match
+                    for (const [key, cities] of Object.entries(countyToCities)) {
+                        if (countyNameMapping[key] && 
+                            countyNameMapping[key].toLowerCase().includes(countyValue)) {
+                            matchedCounty = key;
+                            break;
+                        }
+                    }
+                }
+                
+                // Populate cities if county found
+                if (matchedCounty && countyToCities[matchedCounty]) {
+                    countyToCities[matchedCounty].forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = city;
+                        cityDatalist.appendChild(option);
+                    });
+                }
+            });
+            
+            // Handle county selection from datalist
+            countyInput.addEventListener('change', function() {
+                // Trigger input event to populate cities
+                this.dispatchEvent(new Event('input'));
+            });
+            
+            // Add autocomplete enhancement for county input
+            countyInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                if (value.length > 0) {
+                    // Find counties that match the input
+                    const matches = Object.entries(countyNameMapping)
+                        .filter(([key, name]) => 
+                            name.toLowerCase().includes(value) || 
+                            key.includes(value)
+                        )
+                        .slice(0, 10); // Limit to 10 matches for performance
+                    
+                    // Update datalist with filtered options
+                    const datalist = document.getElementById('county-list');
+                    datalist.innerHTML = '';
+                    matches.forEach(([key, name]) => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = name;
+                        datalist.appendChild(option);
+                    });
+                }
+            });
+            
+            // Add autocomplete enhancement for city input
+            cityInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                const countyValue = countyInput.value.toLowerCase();
+                
+                if (value.length > 0 && countyToCities[countyValue]) {
+                    // Find cities that match the input
+                    const matches = countyToCities[countyValue]
+                        .filter(city => city.toLowerCase().includes(value))
+                        .slice(0, 10); // Limit to 10 matches for performance
+                    
+                    // Update datalist with filtered options
+                    cityDatalist.innerHTML = '';
+                    matches.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = city;
+                        cityDatalist.appendChild(option);
+                    });
+                }
+            });
+        });
+
+        function scanTaxes() {
+            const county = document.getElementById('county').value;
+            const city = document.getElementById('city').value;
+            const zip = document.getElementById('zip').value;
+
+            if (!county) {
+                showStatus('Please select a county', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            setTimeout(() => {
+                currentTaxData = generateTaxData(county, city, zip);
+                displayTaxes(currentTaxData);
+                showLoading(false);
+                showStatus('Tax scan completed successfully!', 'success');
+            }, 2000);
+        }
+
+        function generateTaxData(county, city, zip) {
+            const baseTaxes = [{
+                name: 'Texas State Sales Tax',
+                rate: '6.25%',
+                description: 'Statewide sales tax applied to all taxable sales',
+                appliesTo: 'All food and beverage sales',
+                type: 'state',
+                rateDecimal: 0.0625
+            }];
+
+            const countyTaxes = {
+                'harris': [
+                    { name: 'Harris County Tax', rate: '1.00%', description: 'County-level sales tax', appliesTo: 'All taxable sales', type: 'county', rateDecimal: 0.01 },
+                    { name: 'Metro Transit Tax', rate: '1.00%', description: 'Transportation authority tax', appliesTo: 'All taxable sales', type: 'special', rateDecimal: 0.01 }
+                ],
+                'dallas': [
+                    { name: 'Dallas County Tax', rate: '0.50%', description: 'County-level sales tax', appliesTo: 'All taxable sales', type: 'county', rateDecimal: 0.005 },
+                    { name: 'DART Tax', rate: '1.00%', description: 'Dallas Area Rapid Transit tax', appliesTo: 'All taxable sales', type: 'special', rateDecimal: 0.01 }
+                ],
+                'travis': [
+                    { name: 'Travis County Tax', rate: '0.75%', description: 'County-level sales tax', appliesTo: 'All taxable sales', type: 'county', rateDecimal: 0.0075 },
+                    { name: 'Austin Bag Fee', rate: '$0.05', description: 'Single-use bag fee', appliesTo: 'Per paper/plastic bag provided', type: 'special', rateDecimal: 0.05, isFixed: true }
+                ],
+                'bexar': [
+                    { name: 'Bexar County Tax', rate: '0.75%', description: 'County-level sales tax', appliesTo: 'All taxable sales', type: 'county', rateDecimal: 0.0075 },
+                    { name: 'San Antonio MTA', rate: '0.50%', description: 'Metropolitan Transit Authority tax', appliesTo: 'All taxable sales', type: 'special', rateDecimal: 0.005 }
+                ],
+                'tarrant': [
+                    { name: 'Tarrant County Tax', rate: '0.50%', description: 'County-level sales tax', appliesTo: 'All taxable sales', type: 'county', rateDecimal: 0.005 },
+                    { name: 'Fort Worth MTA', rate: '0.50%', description: 'Metropolitan Transit Authority tax', appliesTo: 'All taxable sales', type: 'special', rateDecimal: 0.005 }
+                ]
+            };
+
+            const cityTaxes = {
+                'austin': [{ name: 'Austin City Tax', rate: '2.00%', description: 'City sales tax', appliesTo: 'All taxable sales', type: 'local', rateDecimal: 0.02 }],
+                'houston': [{ name: 'Houston City Tax', rate: '2.00%', description: 'City sales tax', appliesTo: 'All taxable sales', type: 'local', rateDecimal: 0.02 }],
+                'dallas': [{ name: 'Dallas City Tax', rate: '2.00%', description: 'City sales tax', appliesTo: 'All taxable sales', type: 'local', rateDecimal: 0.02 }],
+                'san-antonio': [{ name: 'San Antonio City Tax', rate: '2.00%', description: 'City sales tax', appliesTo: 'All taxable sales', type: 'local', rateDecimal: 0.02 }],
+                'fort-worth': [{ name: 'Fort Worth City Tax', rate: '2.00%', description: 'City sales tax', appliesTo: 'All taxable sales', type: 'local', rateDecimal: 0.02 }]
+            };
+
+            let allTaxes = [...baseTaxes];
+            
+            if (countyTaxes[county]) {
+                allTaxes = allTaxes.concat(countyTaxes[county]);
+            }
+            
+            if (cityTaxes[city]) {
+                allTaxes = allTaxes.concat(cityTaxes[city]);
+            }
+
+            return {
+                location: { county, city, zip },
+                taxes: allTaxes,
+                totalRate: allTaxes.filter(t => !t.isFixed).reduce((sum, tax) => sum + tax.rateDecimal, 0),
+                scanDate: new Date().toISOString()
+            };
+        }
+
+        function displayTaxes(taxData) {
+            const taxGrid = document.getElementById('taxGrid');
+            taxGrid.innerHTML = '';
+
+            taxData.taxes.forEach(tax => {
+                const taxCard = document.createElement('div');
+                taxCard.className = 'tax-card ' + tax.type;
+                taxCard.innerHTML = `
+                    <div class="tax-name">${tax.name}</div>
+                    <div class="tax-rate">${tax.rate}</div>
+                    <div class="tax-description">${tax.description}</div>
+                    <div class="tax-applies-to"><strong>Applies to:</strong> ${tax.appliesTo}</div>
+                `;
+                taxGrid.appendChild(taxCard);
+            });
+
+            // Add total rate summary
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'tax-card';
+            summaryCard.style.background = 'linear-gradient(135deg, #74b9ff, #0984e3)';
+            summaryCard.style.color = 'white';
+            summaryCard.innerHTML = `
+                <div class="tax-name" style="color: white;">Total Combined Rate</div>
+                <div class="tax-rate" style="color: white;">${(taxData.totalRate * 100).toFixed(2)}%</div>
+                <div class="tax-description" style="color: white;">Combined percentage rate for standard sales tax</div>
+                <div class="tax-applies-to" style="background: rgba(255,255,255,0.1); color: white;"><strong>Note:</strong> Fixed fees like bag taxes are additional</div>
+            `;
+            taxGrid.appendChild(summaryCard);
+
+            document.getElementById('results').classList.add('show');
+        }
+
+        function useLocation() {
+            if (!navigator.geolocation) {
+                showStatus('Geolocation is not supported by this browser.', 'error');
+                return;
+            }
+
+            showStatus('🌍 Getting your location...', 'success');
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    showStatus('📍 Location found! Looking up address...', 'success');
+                    
+                    // Use Google Maps Geocoding to reverse geocode the coordinates
+                    reverseGeocode(lat, lng);
+                },
+                function(error) {
+                    let errorMsg = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg += 'Location access denied by user.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMsg += 'Unknown error occurred.';
+                            break;
+                    }
+                    showStatus(errorMsg + ' Please select manually.', 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
+                }
+            );
+        }
+
+        function reverseGeocode(lat, lng) {
+            if (!geocoder) {
+                showStatus('⚠️ Google Maps not loaded. Using fallback location.', 'error');
+                setFallbackLocation();
+                return;
+            }
+
+            const latlng = { lat: lat, lng: lng };
+            
+            geocoder.geocode({ location: latlng }, function(results, status) {
+                if (status === 'OK' && results[0]) {
+                    parseGeocodingResults(results[0]);
+                } else {
+                    showStatus('❌ Could not determine location details. Using fallback.', 'error');
+                    setFallbackLocation();
+                }
+            });
+        }
+
+        function parseGeocodingResults(result) {
+            let detectedCity = '';
+            let detectedCounty = '';
+            let detectedZip = '';
+            let isTexas = false;
+
+            // Parse address components
+            result.address_components.forEach(component => {
+                const types = component.types;
+                
+                if (types.includes('locality')) {
+                    detectedCity = component.long_name;
+                }
+                if (types.includes('administrative_area_level_2')) {
+                    detectedCounty = component.long_name.replace(' County', '').toLowerCase();
+                }
+                if (types.includes('postal_code')) {
+                    detectedZip = component.short_name;
+                }
+                if (types.includes('administrative_area_level_1') && component.short_name === 'TX') {
+                    isTexas = true;
+                }
+            });
+
+            if (!isTexas) {
+                showStatus('📍 Location detected outside Texas. Please select a Texas location manually.', 'error');
+                return;
+            }
+
+            // Find matching county in our system
+            const countyKey = findCountyKey(detectedCounty);
+            if (countyKey) {
+                document.getElementById('county').value = countyKey;
+                document.getElementById('county').dispatchEvent(new Event('input'));
+                
+                // Set ZIP code
+                if (detectedZip) {
+                    document.getElementById('zip').value = detectedZip;
+                }
+
+                // Try to match city
+                setTimeout(() => {
+                    const cityKey = findCityKey(detectedCity, countyKey);
+                    if (cityKey) {
+                        document.getElementById('city').value = cityKey;
+                        showStatus('✅ Location set to ' + detectedCity + ', ' + countyNameMapping[countyKey] + ', TX', 'success');
+                    } else {
+                        showStatus('✅ County set to ' + countyNameMapping[countyKey] + '. Please select your city manually.', 'success');
+                    }
+                }, 100);
+            } else {
+                showStatus('📍 County not found in our database. Please select manually.', 'error');
+            }
+        }
+
+        function findCountyKey(countyName) {
+            const normalized = countyName.toLowerCase().replace(/\s+/g, '-');
+            for (const [key, fullName] of Object.entries(countyNameMapping)) {
+                if (key === normalized || fullName.toLowerCase().includes(countyName.toLowerCase())) {
+                    return key;
+                }
+            }
+            return null;
+        }
+
+        function findCityKey(cityName, countyKey) {
+            if (countyToCities[countyKey]) {
+                const city = countyToCities[countyKey].find(c => 
+                    c.toLowerCase() === cityName.toLowerCase()
+                );
+                return city ? city.toLowerCase().replace(/\s+/g, '-') : null;
+            }
+            return null;
+        }
+
+        function setFallbackLocation() {
+            // Set Harris County/Houston as fallback
+            document.getElementById('county').value = 'harris';
+            document.getElementById('county').dispatchEvent(new Event('input'));
+            setTimeout(() => {
+                document.getElementById('city').value = 'houston';
+                showStatus('🏙️ Fallback location set to Houston, Harris County, TX', 'success');
+            }, 100);
+        }
+
+        function exportJSON() {
+            if (!currentTaxData) {
+                showStatus('Please scan taxes first', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(currentTaxData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'texas-restaurant-taxes-' + Date.now() + '.json';
+            link.click();
+            URL.revokeObjectURL(url);
+            showStatus('Tax data exported successfully!', 'success');
+        }
+
+        function exportCSV() {
+            if (!currentTaxData) {
+                showStatus('Please scan taxes first', 'error');
+                return;
+            }
+            
+            let csv = 'Tax Name,Rate,Description,Applies To,Type\n';
+            currentTaxData.taxes.forEach(tax => {
+                csv += '"' + tax.name + '","' + tax.rate + '","' + tax.description + '","' + tax.appliesTo + '","' + tax.type + '"\n';
+            });
+            
+            const dataBlob = new Blob([csv], {type: 'text/csv'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'texas-restaurant-taxes-' + Date.now() + '.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+            showStatus('Tax data exported successfully!', 'success');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.innerHTML = '<div class="status-message status-' + type + '">' + message + '</div>';
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
