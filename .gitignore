@@ -140,6 +140,16 @@ config.js
 *.env
 .env*
 
+# Database
+database/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
 # Node modules
 node_modules/
 

@@ -325,5 +325,176 @@
 
     <!-- Include configuration file (create config.js from config.example.js) -->
     <script src="config.js"></script>
+    
+    <!-- Database API Integration -->
+    <script>
+        // Override the existing functions to use the database API
+        let counties = [];
+        let currentTaxData = null;
+
+        // Load counties from database
+        async function loadCountiesFromDB() {
+            try {
+                const response = await fetch('/api/counties');
+                counties = await response.json();
+                populateCountyDropdown();
+            } catch (error) {
+                console.error('Error loading counties:', error);
+                showStatus('Error loading counties from database', 'error');
+            }
+        }
+
+        // Populate county dropdown with database data
+        function populateCountyDropdown() {
+            const datalist = document.getElementById('county-list');
+            datalist.innerHTML = '';
+            
+            counties.forEach(county => {
+                const option = document.createElement('option');
+                option.value = county.slug;
+                option.textContent = county.name;
+                datalist.appendChild(option);
+            });
+        }
+
+        // Load cities for selected county
+        async function loadCitiesForCounty(countySlug) {
+            const county = counties.find(c => c.slug === countySlug);
+            if (!county) return;
+
+            try {
+                const response = await fetch(`/api/counties/${county.id}/cities`);
+                const cities = await response.json();
+                populateCityDropdown(cities);
+            } catch (error) {
+                console.error('Error loading cities:', error);
+                showStatus('Error loading cities from database', 'error');
+            }
+        }
+
+        // Populate city dropdown
+        function populateCityDropdown(cities) {
+            const datalist = document.getElementById('city-list');
+            datalist.innerHTML = '';
+            
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city.slug;
+                option.textContent = city.name;
+                datalist.appendChild(option);
+            });
+        }
+
+        // Override the existing scanTaxes function to use database
+        async function scanTaxes() {
+            const countySlug = document.getElementById('county').value;
+            const citySlug = document.getElementById('city').value;
+            const zip = document.getElementById('zip').value;
+
+            if (!countySlug) {
+                showStatus('Please select a county', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const county = counties.find(c => c.slug === countySlug);
+                if (!county) {
+                    throw new Error('County not found');
+                }
+
+                let cityId = null;
+                if (citySlug) {
+                    const response = await fetch(`/api/counties/${county.id}/cities`);
+                    const cities = await response.json();
+                    const city = cities.find(c => c.slug === citySlug);
+                    if (city) {
+                        cityId = city.id;
+                    }
+                }
+
+                // Get tax data from database
+                const taxResponse = await fetch(`/api/taxes/${county.id}${cityId ? '/' + cityId : ''}`);
+                const taxData = await taxResponse.json();
+
+                currentTaxData = {
+                    location: { county: countySlug, city: citySlug, zip },
+                    taxes: taxData.taxes,
+                    totalRate: taxData.totalRate,
+                    scanDate: new Date().toISOString()
+                };
+
+                displayTaxes(currentTaxData);
+                showStatus('Tax scan completed successfully!', 'success');
+            } catch (error) {
+                console.error('Error scanning taxes:', error);
+                showStatus('Error scanning taxes. Please try again.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Update the county input handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load counties when page loads
+            loadCountiesFromDB();
+
+            const countyInput = document.getElementById('county');
+            const cityInput = document.getElementById('city');
+            
+            // Handle county input changes
+            countyInput.addEventListener('input', function() {
+                const countySlug = this.value.toLowerCase();
+                
+                // Clear city input
+                cityInput.value = '';
+                
+                // Load cities for selected county
+                if (countySlug) {
+                    loadCitiesForCounty(countySlug);
+                }
+            });
+            
+            // Handle county selection from datalist
+            countyInput.addEventListener('change', function() {
+                // Trigger input event to load cities
+                this.dispatchEvent(new Event('input'));
+            });
+        });
+
+        // Update displayTaxes function to handle database format
+        function displayTaxes(taxData) {
+            const taxGrid = document.getElementById('taxGrid');
+            taxGrid.innerHTML = '';
+
+            taxData.taxes.forEach(tax => {
+                const taxCard = document.createElement('div');
+                taxCard.className = 'tax-card ' + tax.type;
+                taxCard.innerHTML = `
+                    <div class="tax-name">${tax.name}</div>
+                    <div class="tax-rate">${tax.is_percentage ? tax.rate + '%' : '$' + tax.rate}</div>
+                    <div class="tax-description">${tax.description || 'No description available'}</div>
+                    <div class="tax-applies-to"><strong>Applies to:</strong> ${tax.applies_to || 'All taxable sales'}</div>
+                `;
+                taxGrid.appendChild(taxCard);
+            });
+
+            // Add total rate summary
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'tax-card';
+            summaryCard.style.background = 'linear-gradient(135deg, #74b9ff, #0984e3)';
+            summaryCard.style.color = 'white';
+            summaryCard.innerHTML = `
+                <div class="tax-name" style="color: white;">Total Combined Rate</div>
+                <div class="tax-rate" style="color: white;">${(taxData.totalRate * 100).toFixed(2)}%</div>
+                <div class="tax-description" style="color: white;">Combined percentage rate for standard sales tax</div>
+                <div class="tax-applies-to" style="background: rgba(255,255,255,0.1); color: white;"><strong>Note:</strong> Fixed fees are additional</div>
+            `;
+            taxGrid.appendChild(summaryCard);
+
+            document.getElementById('results').classList.add('show');
+        }
+    </script>
 </body>
 </html>
