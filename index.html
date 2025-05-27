@@ -327,8 +327,8 @@
                 <div class="location-inputs">
                     <div class="input-group">
                         <label for="county">County</label>
-                        <select id="county">
-                            <option value="">Select County</option>
+                        <input type="text" id="county" list="county-list" placeholder="Type or select county..." autocomplete="off">
+                        <datalist id="county-list">
                             <option value="anderson">Anderson County</option>
                             <option value="andrews">Andrews County</option>
                             <option value="angelina">Angelina County</option>
@@ -578,14 +578,15 @@
                             <option value="young">Young County</option>
                             <option value="zapata">Zapata County</option>
                             <option value="zavala">Zavala County</option>
-                        </select>
+                        </datalist>
                     </div>
 
                     <div class="input-group">
                         <label for="city">City</label>
-                        <select id="city">
-                            <option value="">Select City</option>
-                        </select>
+                        <input type="text" id="city" list="city-list" placeholder="Type or select city..." autocomplete="off">
+                        <datalist id="city-list">
+                            <!-- Cities will be populated dynamically -->
+                        </datalist>
                     </div>
 
                     <div class="input-group">
@@ -1225,21 +1226,95 @@
 
         // Initialize county dropdown functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const countySelect = document.getElementById('county');
-            countySelect.addEventListener('change', function() {
-                const county = this.value;
-                const citySelect = document.getElementById('city');
+            const countyInput = document.getElementById('county');
+            const cityInput = document.getElementById('city');
+            const cityDatalist = document.getElementById('city-list');
+            
+            // Handle county input changes
+            countyInput.addEventListener('input', function() {
+                const countyValue = this.value.toLowerCase();
+                const cityInput = document.getElementById('city');
                 
-                // Clear city options
-                citySelect.innerHTML = '<option value="">Select City</option>';
+                // Clear city input and datalist
+                cityInput.value = '';
+                cityDatalist.innerHTML = '';
                 
-                // Populate cities based on county
-                if (county && countyToCities[county]) {
-                    countyToCities[county].forEach(city => {
+                // Find matching county (exact match or partial match)
+                let matchedCounty = null;
+                
+                // First try exact match
+                if (countyToCities[countyValue]) {
+                    matchedCounty = countyValue;
+                } else {
+                    // Try to find partial match
+                    for (const [key, cities] of Object.entries(countyToCities)) {
+                        if (countyNameMapping[key] && 
+                            countyNameMapping[key].toLowerCase().includes(countyValue)) {
+                            matchedCounty = key;
+                            break;
+                        }
+                    }
+                }
+                
+                // Populate cities if county found
+                if (matchedCounty && countyToCities[matchedCounty]) {
+                    countyToCities[matchedCounty].forEach(city => {
                         const option = document.createElement('option');
                         option.value = city.toLowerCase().replace(/\s+/g, '-');
                         option.textContent = city;
-                        citySelect.appendChild(option);
+                        cityDatalist.appendChild(option);
+                    });
+                }
+            });
+            
+            // Handle county selection from datalist
+            countyInput.addEventListener('change', function() {
+                // Trigger input event to populate cities
+                this.dispatchEvent(new Event('input'));
+            });
+            
+            // Add autocomplete enhancement for county input
+            countyInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                if (value.length > 0) {
+                    // Find counties that match the input
+                    const matches = Object.entries(countyNameMapping)
+                        .filter(([key, name]) => 
+                            name.toLowerCase().includes(value) || 
+                            key.includes(value)
+                        )
+                        .slice(0, 10); // Limit to 10 matches for performance
+                    
+                    // Update datalist with filtered options
+                    const datalist = document.getElementById('county-list');
+                    datalist.innerHTML = '';
+                    matches.forEach(([key, name]) => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = name;
+                        datalist.appendChild(option);
+                    });
+                }
+            });
+            
+            // Add autocomplete enhancement for city input
+            cityInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                const countyValue = countyInput.value.toLowerCase();
+                
+                if (value.length > 0 && countyToCities[countyValue]) {
+                    // Find cities that match the input
+                    const matches = countyToCities[countyValue]
+                        .filter(city => city.toLowerCase().includes(value))
+                        .slice(0, 10); // Limit to 10 matches for performance
+                    
+                    // Update datalist with filtered options
+                    cityDatalist.innerHTML = '';
+                    matches.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = city;
+                        cityDatalist.appendChild(option);
                     });
                 }
             });
@@ -1343,7 +1418,7 @@
             // Add total rate summary
             const summaryCard = document.createElement('div');
             summaryCard.className = 'tax-card';
-            summaryCard.style.background = 'linear-gradient(135deg, #2c3e50, #3498db)';
+            summaryCard.style.background = 'linear-gradient(135deg, #74b9ff, #0984e3)';
             summaryCard.style.color = 'white';
             summaryCard.innerHTML = `
                 <div class="tax-name">Total Combined Rate</div>
@@ -1452,7 +1527,7 @@
             const countyKey = findCountyKey(detectedCounty);
             if (countyKey) {
                 document.getElementById('county').value = countyKey;
-                document.getElementById('county').dispatchEvent(new Event('change'));
+                document.getElementById('county').dispatchEvent(new Event('input'));
                 
                 // Set ZIP code
                 if (detectedZip) {
@@ -1497,7 +1572,7 @@
         function setFallbackLocation() {
             // Set Harris County/Houston as fallback
             document.getElementById('county').value = 'harris';
-            document.getElementById('county').dispatchEvent(new Event('change'));
+            document.getElementById('county').dispatchEvent(new Event('input'));
             setTimeout(() => {
                 document.getElementById('city').value = 'houston';
                 showStatus('🏙️ Fallback location set to Houston, Harris County, TX', 'success');
