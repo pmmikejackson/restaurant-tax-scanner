@@ -1,58 +1,19 @@
-// Multi-layer obfuscated API key
-// Original: AIzaSyAn7R7YazRBhy43-XK8z0aaUiZC2WRRY84
-// Encoded with: character substitution -> reverse -> base64
-const obfuscatedKey = 'V1dHRkdKUEtMUUhHSEJBQ0RGSEpHUVhRWA==';
-
-// Character substitution map (for decoding)
-const charMap = {
-    'X': 'A', 'Q': 'I', 'M': 'z', 'P': 'a', 'L': 'S', 'K': 'y', 'J': 'n', 'H': '7',
-    'G': 'R', 'F': 'Y', 'E': 'B', 'D': 'h', 'C': '4', 'B': '3', 'A': '-', 'Z': 'X',
-    'Y': 'K', 'W': '8', 'V': '0', 'U': 'U', 'T': 'i', 'S': 'Z', 'R': 'C', 'Q': '2',
-    'P': 'W', 'O': 'r', 'N': 'e', 'M': 't', 'L': 'o', 'K': 'u', 'J': 'p', 'I': 'l',
-    'H': 'm', 'G': 'f', 'F': 'g', 'E': 'v', 'D': 'b', 'C': 'j', 'B': 'q', 'A': 'x'
-};
-
-// Decode function with multiple layers
-function decodeApiKey(encoded) {
-    try {
-        // Step 1: Base64 decode
-        let decoded = atob(encoded);
-        
-        // Step 2: Reverse the string
-        decoded = decoded.split('').reverse().join('');
-        
-        // Step 3: Character substitution
-        let result = '';
-        for (let char of decoded) {
-            result += charMap[char] || char;
-        }
-        
-        return result;
-    } catch (e) {
-        console.error('Failed to decode API key');
-        return '';
-    }
-}
-
-// Alternative simple obfuscation method
-function simpleDecodeKey() {
-    // Split and reconstruct the key
-    const parts = ['AIza', 'SyAn', '7R7Y', 'azRB', 'hy43', '-XK8', 'z0aa', 'UiZC', '2WRR', 'Y84'];
-    return parts.join('');
-}
+// Google Maps API integration with environment variable
+// DO NOT commit API keys to version control!
 
 // Load Google Maps API dynamically
 function loadGoogleMapsAPI() {
-    let apiKey = decodeApiKey(obfuscatedKey);
+    // API key should be loaded from environment variables or server-side
+    // For development, you can set this in your local environment
+    // For production, use server-side proxy or environment variables
     
-    // Fallback to simple method if complex decoding fails
-    if (!apiKey || apiKey.length < 30) {
-        apiKey = simpleDecodeKey();
-    }
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 
+                   window.GOOGLE_MAPS_API_KEY || 
+                   prompt('Please enter your Google Maps API key:');
     
-    if (!apiKey || apiKey.length < 30) {
-        console.error('Invalid API key');
-        showStatus('Failed to initialize mapping services. Some features may not work.', 'error');
+    if (!apiKey) {
+        console.error('Google Maps API key not found');
+        showStatus('Google Maps API key not configured. Some features may not work.', 'error');
         return;
     }
     
