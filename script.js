@@ -191,12 +191,12 @@ function useLocation() {
     showStatus('🌍 Getting your location... (Please allow location access when prompted)', 'success');
 
     navigator.geolocation.getCurrentPosition(
-        function(position) {
+        async function(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
             showStatus('📍 Location found! Looking up address...', 'success');
-            reverseGeocode(lat, lng);
+            await reverseGeocode(lat, lng);
         },
         function(error) {
             let errorMsg = '❌ Unable to get your location. ';
@@ -230,16 +230,59 @@ function useLocation() {
 }
 
 // Reverse geocoding function
-function reverseGeocode(lat, lng) {
-    const latlng = new google.maps.LatLng(lat, lng);
-    
-    window.geocoder.geocode({ location: latlng }, function(results, status) {
-        if (status === 'OK' && results[0]) {
-            parseGeocodingResults(results);
+async function reverseGeocode(lat, lng) {
+    try {
+        console.log('🌍 Making geocoding request to Netlify function...');
+        
+        // Check if we're on Netlify or local
+        const isNetlify = window.location.hostname.includes('netlify.app') || 
+                         window.location.hostname.includes('netlify.com') ||
+                         window.location.hostname !== 'localhost';
+        
+        if (isNetlify) {
+            // Use Netlify function for geocoding
+            const response = await fetch('/.netlify/functions/geocode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ lat, lng })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Geocoding request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+                console.log('✅ Geocoding successful via Netlify function');
+                parseGeocodingResults(data.results);
+            } else {
+                throw new Error('No geocoding results found');
+            }
         } else {
-            showStatus('❌ Could not determine location. Please enter manually.', 'error');
+            // Use Google Maps API directly for local development
+            if (!window.geocoder) {
+                throw new Error('Google Maps geocoder not available');
+            }
+            
+            const latlng = new google.maps.LatLng(lat, lng);
+            
+            window.geocoder.geocode({ location: latlng }, function(results, status) {
+                if (status === 'OK' && results[0]) {
+                    console.log('✅ Geocoding successful via Google Maps API');
+                    parseGeocodingResults(results);
+                } else {
+                    console.error('❌ Google Maps geocoding failed:', status);
+                    showStatus('❌ Could not determine location. Please enter manually.', 'error');
+                }
+            });
         }
-    });
+    } catch (error) {
+        console.error('❌ Geocoding error:', error);
+        showStatus('❌ Could not determine location. Please enter manually.', 'error');
+    }
 }
 
 // Parse geocoding results and populate form
@@ -395,7 +438,16 @@ async function scanTaxes() {
         // Try to use the API server first
         const apiUrl = `${CONFIG.API_BASE_URL}/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}`;
         
-        const response = await fetch(apiUrl);
+        // Check if we're on Netlify and adjust the URL
+        const isNetlify = window.location.hostname.includes('netlify.app') || 
+                         window.location.hostname.includes('netlify.com') ||
+                         window.location.hostname !== 'localhost';
+        
+        const finalUrl = isNetlify ? 
+            `/.netlify/functions/tax-data-comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}` : 
+            apiUrl;
+        
+        const response = await fetch(finalUrl);
         
         if (response.ok) {
             const apiData = await response.json();
@@ -608,7 +660,15 @@ async function loadDataFreshness() {
         console.log('🌐 Loading data freshness from:', apiUrl);
         console.log('🔄 Cache buster value:', cacheBuster);
         
-        const response = await fetch(apiUrl, {
+        // Check if we're on Netlify and adjust the URL
+        const isNetlify = window.location.hostname.includes('netlify.app') || 
+                         window.location.hostname.includes('netlify.com') ||
+                         window.location.hostname !== 'localhost';
+        
+        const finalUrl = isNetlify ? `/.netlify/functions/tax-data-freshness?_=${cacheBuster}` : apiUrl;
+        console.log('🌐 Final API URL:', finalUrl);
+        
+        const response = await fetch(finalUrl, {
             cache: 'no-cache',
             headers: {
                 'Cache-Control': 'no-cache',
@@ -791,7 +851,15 @@ async function refreshTaxData() {
         const apiUrl = `${CONFIG.API_BASE_URL}/api/tax-data/update-official`;
         console.log('🌐 Making API call to:', apiUrl);
         
-        const response = await fetch(apiUrl, {
+        // Check if we're on Netlify and adjust the URL
+        const isNetlify = window.location.hostname.includes('netlify.app') || 
+                         window.location.hostname.includes('netlify.com') ||
+                         window.location.hostname !== 'localhost';
+        
+        const finalUrl = isNetlify ? '/.netlify/functions/tax-data-update-official' : apiUrl;
+        console.log('🌐 Final API URL:', finalUrl);
+        
+        const response = await fetch(finalUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -886,14 +954,27 @@ async function searchTaxes() {
     
     try {
         // Use the new comprehensive tax rate API
-        const response = await fetch(`/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`);
+        // Check if we're on Netlify and adjust the URL
+        const isNetlify = window.location.hostname.includes('netlify.app') || 
+                         window.location.hostname.includes('netlify.com') ||
+                         window.location.hostname !== 'localhost';
+        
+        const apiUrl = isNetlify ? 
+            `/.netlify/functions/tax-data-comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}` :
+            `/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`;
+        
+        const response = await fetch(apiUrl);
         const data = await response.json();
         
         if (data.total_rate) {
             displayComprehensiveResults(data);
         } else {
             // Fallback to original method if comprehensive data not available
-            const fallbackResponse = await fetch(`/api/tax-data/search?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`);
+            const fallbackUrl = isNetlify ? 
+                `/.netlify/functions/tax-data-search?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}` :
+                `/api/tax-data/search?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`;
+            
+            const fallbackResponse = await fetch(fallbackUrl);
             const fallbackData = await fallbackResponse.json();
             displayResults(fallbackData);
         }

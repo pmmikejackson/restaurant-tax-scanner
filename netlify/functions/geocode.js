@@ -25,6 +25,8 @@ exports.handler = async (event, context) => {
         
         console.log('Making geocoding request to Google Maps API');
         
+        // Use dynamic import for fetch in Node.js environment
+        const fetch = globalThis.fetch || (await import('node-fetch')).default;
         const response = await fetch(geocodeUrl);
         const data = await response.json();
         
