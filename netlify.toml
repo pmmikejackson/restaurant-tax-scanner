@@ -1,11 +1,7 @@
 [build]
-  functions = "netlify/functions"
   publish = "."
-
-[build.environment]
-  GOOGLE_MAPS_API_KEY = "AIzaSyA4jbZSWX3hNWxuE7_vG82Op_sBwwuTVgM"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200 
+  to = "/404.html"
+  status = 404 
