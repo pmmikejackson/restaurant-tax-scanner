@@ -598,12 +598,30 @@ function updateDataFreshnessUI(data) {
     let status = 'fresh';
     let statusText = 'Up to date';
     
-    if (daysSinceImport > 120) { // 4 months
+    // For quarterly data, anything older than 3 months (90 days) is stale
+    // Anything older than 6 months (180 days) is severely outdated
+    if (daysSinceImport > 180) { // 6 months
         status = 'outdated';
-        statusText = 'Needs update';
+        statusText = 'Severely outdated';
     } else if (daysSinceImport > 90) { // 3 months
         status = 'stale';
-        statusText = 'Getting stale';
+        statusText = 'Needs quarterly update';
+    }
+    
+    // Special check for version number - if it's from a previous year, it's definitely outdated
+    const currentYear = new Date().getFullYear();
+    const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+    const versionMatch = (data.version_number || '').match(/(\d{4})\.Q(\d)/);
+    
+    if (versionMatch) {
+        const versionYear = parseInt(versionMatch[1]);
+        const versionQuarter = parseInt(versionMatch[2]);
+        
+        if (versionYear < currentYear || 
+            (versionYear === currentYear && versionQuarter < currentQuarter - 1)) {
+            status = 'outdated';
+            statusText = 'Version outdated';
+        }
     }
     
     if (freshnessIndicator) {

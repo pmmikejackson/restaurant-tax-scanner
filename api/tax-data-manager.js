@@ -170,8 +170,12 @@ class TaxDataManager {
                     return;
                 }
                 
-                // Create new version
-                const versionNumber = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+                // Create new version with current quarter
+                const now = new Date();
+                const year = now.getFullYear();
+                const quarter = Math.ceil((now.getMonth() + 1) / 3);
+                const versionNumber = `${year}.Q${quarter}`;
+                
                 const insertQuery = `
                     INSERT INTO tax_data_versions 
                     (version_number, state_id, source_url, source_date, imported_by, notes)
