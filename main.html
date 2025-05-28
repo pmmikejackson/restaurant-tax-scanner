@@ -323,8 +323,23 @@
         </div>
     </div>
 
-    <!-- Include configuration file (create config.js from config.example.js) -->
-    <script src="config.js"></script>
+    <!-- Load configuration securely from API -->
+    <script>
+        // Load API key from secure endpoint
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                window.GOOGLE_MAPS_API_KEY = config.googleMapsApiKey;
+            } catch (error) {
+                console.warn('Could not load API configuration:', error);
+                window.GOOGLE_MAPS_API_KEY = null;
+            }
+        }
+        
+        // Load config before initializing the app
+        loadConfig();
+    </script>
     
     <!-- Database API Integration -->
     <script>
