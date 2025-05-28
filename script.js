@@ -321,7 +321,7 @@ async function scanTaxes() {
     
     try {
         // Try to use the API server first
-        const apiUrl = `http://localhost:3001/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}`;
+        const apiUrl = `${CONFIG.API_BASE_URL}/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}`;
         
         const response = await fetch(apiUrl);
         
@@ -531,7 +531,7 @@ async function loadDataFreshness() {
         // Call the actual API endpoint with strong cache busting
         const cacheBuster = Date.now() + Math.random();
         console.log('Loading data freshness with cache buster:', cacheBuster);
-        const response = await fetch(`http://localhost:3001/api/tax-data/freshness?_=${cacheBuster}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/tax-data/freshness?_=${cacheBuster}`, {
             cache: 'no-cache',
             headers: {
                 'Cache-Control': 'no-cache',
@@ -668,7 +668,7 @@ async function refreshTaxData() {
         refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        const response = await fetch('http://localhost:3001/api/tax-data/update-official', {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/tax-data/update-official`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

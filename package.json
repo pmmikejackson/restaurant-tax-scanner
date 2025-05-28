@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node api/server.js",
     "dev": "nodemon api/server.js",
+    "build": "node build-netlify.js",
     "import-texas-rates": "node scripts/import-texas-rates.js",
     "test-county": "node scripts/import-texas-rates.js --county",
     "setup-db": "node -e \"const db = require('./api/tax-data-manager'); console.log('Database setup complete');\"",
