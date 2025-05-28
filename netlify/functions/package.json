@@ -4,7 +4,7 @@
   "description": "Netlify Functions for Texas Restaurant Tax Scanner",
   "main": "index.js",
   "dependencies": {
-    "sqlite3": "^5.1.6"
+    "better-sqlite3": "^8.7.0"
   },
   "engines": {
     "node": ">=18.0.0"

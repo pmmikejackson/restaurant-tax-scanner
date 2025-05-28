@@ -1,7 +1,7 @@
 // Tax Data Management API
 // Handles database operations, data updates, and version management
 
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const TexasTaxImporter = require('./texas-tax-importer');
 
@@ -13,35 +13,32 @@ class TaxDataManager {
 
     // Initialize database connection
     async connect() {
-        return new Promise((resolve, reject) => {
-            this.db = new sqlite3.Database(this.dbPath, (err) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    console.log('Connected to tax database');
-                    resolve();
-                }
-            });
-        });
+        try {
+            this.db = new Database(this.dbPath, { readonly: true, fileMustExist: true });
+            console.log('Connected to tax database');
+            return Promise.resolve();
+        } catch (error) {
+            console.error('Failed to connect to database:', error);
+            return Promise.reject(error);
+        }
     }
 
     // Close database connection
     async close() {
-        return new Promise((resolve, reject) => {
-            this.db.close((err) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    console.log('Database connection closed');
-                    resolve();
-                }
-            });
-        });
+        try {
+            if (this.db) {
+                this.db.close();
+                console.log('Database connection closed');
+            }
+            return Promise.resolve();
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     // Get all counties for a state
     async getCounties(stateCode = 'TX') {
-        return new Promise((resolve, reject) => {
+        try {
             const query = `
                 SELECT c.id, c.name, c.slug, c.fips_code
                 FROM counties c
@@ -50,19 +47,17 @@ class TaxDataManager {
                 ORDER BY c.name
             `;
             
-            this.db.all(query, [stateCode], (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            });
-        });
+            const stmt = this.db.prepare(query);
+            const rows = stmt.all(stateCode);
+            return Promise.resolve(rows);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     // Get cities for a county
     async getCities(countySlug, stateCode = 'TX') {
-        return new Promise((resolve, reject) => {
+        try {
             const query = `
                 SELECT ci.id, ci.name, ci.slug, ci.population
                 FROM cities ci
@@ -72,19 +67,17 @@ class TaxDataManager {
                 ORDER BY ci.name
             `;
             
-            this.db.all(query, [countySlug, stateCode], (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            });
-        });
+            const stmt = this.db.prepare(query);
+            const rows = stmt.all(countySlug, stateCode);
+            return Promise.resolve(rows);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     // Get current tax data for a location
     async getTaxesForLocation(countySlug, citySlug = null, stateCode = 'TX') {
-        return new Promise((resolve, reject) => {
+        try {
             const query = `
                 SELECT 
                     t.id,
@@ -117,19 +110,17 @@ class TaxDataManager {
                 ORDER BY tt.name, t.name
             `;
             
-            this.db.all(query, [stateCode, countySlug, citySlug, countySlug], (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            });
-        });
+            const stmt = this.db.prepare(query);
+            const rows = stmt.all(stateCode, countySlug, citySlug, countySlug);
+            return Promise.resolve(rows);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     // Get current data version info
     async getCurrentDataVersion(stateCode = 'TX') {
-        return new Promise((resolve, reject) => {
+        try {
             const query = `
                 SELECT 
                     tdv.*,
@@ -144,14 +135,12 @@ class TaxDataManager {
                 LIMIT 1
             `;
             
-            this.db.get(query, [stateCode], (err, row) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(row);
-                }
-            });
-        });
+            const stmt = this.db.prepare(query);
+            const row = stmt.get(stateCode);
+            return Promise.resolve(row);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     // Create new data version
@@ -307,16 +296,11 @@ class TaxDataManager {
 
     // Get data freshness info
     async getDataFreshness(stateCode = 'TX') {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not connected'));
-                return;
-            }
-            
-            // First get data source info (simpler query)
+        try {
+            // First get source info
             const sourceQuery = `
                 SELECT 
-                    name as source_name,
+                    source_name,
                     update_frequency,
                     last_checked
                 FROM data_sources 
@@ -324,47 +308,41 @@ class TaxDataManager {
                 LIMIT 1
             `;
             
-            this.db.get(sourceQuery, [], (err, sourceRow) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                
-                // Then get the latest active version info
-                const versionQuery = `
-                    SELECT 
-                        tdv.source_date,
-                        tdv.imported_date,
-                        tdv.version_number,
-                        julianday('now') - julianday(tdv.imported_date) as days_since_import
-                    FROM tax_data_versions tdv
-                    JOIN states s ON tdv.state_id = s.id
-                    WHERE s.code = ? AND tdv.is_active = 1
-                    ORDER BY tdv.imported_date DESC
-                    LIMIT 1
-                `;
-                
-                this.db.get(versionQuery, [stateCode], (err, versionRow) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    
-                    // Combine the results
-                    const result = {
-                        source_name: sourceRow ? sourceRow.source_name : 'Unknown',
-                        update_frequency: sourceRow ? sourceRow.update_frequency : 'quarterly',
-                        last_checked: sourceRow ? sourceRow.last_checked : null,
-                        source_date: versionRow ? versionRow.source_date : null,
-                        imported_date: versionRow ? versionRow.imported_date : null,
-                        version_number: versionRow ? versionRow.version_number : 'Unknown',
-                        days_since_import: versionRow ? versionRow.days_since_import : 0
-                    };
-                    
-                    resolve(result);
-                });
-            });
-        });
+            const sourceStmt = this.db.prepare(sourceQuery);
+            const sourceRow = sourceStmt.get();
+            
+            // Then get the latest active version info
+            const versionQuery = `
+                SELECT 
+                    tdv.source_date,
+                    tdv.imported_date,
+                    tdv.version_number,
+                    julianday('now') - julianday(tdv.imported_date) as days_since_import
+                FROM tax_data_versions tdv
+                JOIN states s ON tdv.state_id = s.id
+                WHERE s.code = ? AND tdv.is_active = 1
+                ORDER BY tdv.imported_date DESC
+                LIMIT 1
+            `;
+            
+            const versionStmt = this.db.prepare(versionQuery);
+            const versionRow = versionStmt.get(stateCode);
+            
+            // Combine the results
+            const result = {
+                source_name: sourceRow ? sourceRow.source_name : 'Unknown',
+                update_frequency: sourceRow ? sourceRow.update_frequency : 'quarterly',
+                last_checked: sourceRow ? sourceRow.last_checked : null,
+                source_date: versionRow ? versionRow.source_date : null,
+                imported_date: versionRow ? versionRow.imported_date : null,
+                version_number: versionRow ? versionRow.version_number : 'Unknown',
+                days_since_import: versionRow ? versionRow.days_since_import : 0
+            };
+            
+            return Promise.resolve(result);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     /**
@@ -408,11 +386,10 @@ class TaxDataManager {
      * Update the last_checked timestamp for the Texas State Comptroller source
      */
     async updateLastChecked() {
-        return new Promise((resolve, reject) => {
+        try {
             if (!this.db) {
                 // If no database connection, just resolve
-                resolve();
-                return;
+                return Promise.resolve();
             }
             
             // Get current local time
@@ -434,16 +411,14 @@ class TaxDataManager {
                 WHERE name = 'Texas Comptroller Sales Tax Rates'
             `;
             
-            this.db.run(query, [localTime], (err) => {
-                if (err) {
-                    console.warn('Could not update last_checked timestamp:', err.message);
-                    resolve(); // Don't fail the whole operation for this
-                } else {
-                    console.log('Updated last_checked timestamp to:', localTime);
-                    resolve();
-                }
-            });
-        });
+            const stmt = this.db.prepare(query);
+            stmt.run(localTime);
+            console.log('Updated last_checked timestamp to:', localTime);
+            return Promise.resolve();
+        } catch (error) {
+            console.warn('Could not update last_checked timestamp:', error.message);
+            return Promise.resolve(); // Don't fail the whole operation for this
+        }
     }
 
     /**
