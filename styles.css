@@ -123,6 +123,45 @@ body {
 .btn-location {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
+    display: none; /* Initially hidden until Google Maps loads */
+    position: relative;
+}
+
+.btn-location:hover {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+}
+
+.btn-location.disabled {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-location.disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+/* Tooltip for location button */
+.btn-location[title] {
+    position: relative;
+}
+
+.btn-location[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
 }
 
 .btn-scan {
