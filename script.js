@@ -530,6 +530,7 @@ async function loadDataFreshness() {
     try {
         // Call the actual API endpoint with strong cache busting
         const cacheBuster = Date.now() + Math.random();
+        console.log('Loading data freshness with cache buster:', cacheBuster);
         const response = await fetch(`http://localhost:3001/api/tax-data/freshness?_=${cacheBuster}`, {
             cache: 'no-cache',
             headers: {
@@ -540,6 +541,7 @@ async function loadDataFreshness() {
         
         if (response.ok) {
             const data = await response.json();
+            console.log('Data freshness API response:', data);
             updateDataFreshnessUI(data);
         } else {
             console.error('Failed to load data freshness:', response.status);
@@ -583,10 +585,15 @@ function updateDataFreshnessUI(data) {
     // Handle last checked
     if (lastChecked) {
         if (data.last_checked) {
-            lastChecked.textContent = formatDateTime(data.last_checked);
+            const formattedTime = formatDateTime(data.last_checked);
+            console.log('Updating Last Checked field:', data.last_checked, '->', formattedTime);
+            lastChecked.textContent = formattedTime;
         } else {
+            console.log('No last_checked data available, setting to Never');
             lastChecked.textContent = 'Never';
         }
+    } else {
+        console.error('lastChecked element not found in DOM');
     }
     
     // Handle data version
@@ -669,6 +676,7 @@ async function refreshTaxData() {
         });
         
         const result = await response.json();
+        console.log('Refresh API response:', result);
         
         if (result.success) {
             if (result.details && result.details.message === 'Data already exists') {
@@ -688,11 +696,20 @@ async function refreshTaxData() {
                 }
             }
             
-            // Refresh data freshness display after a longer delay to ensure database is updated
-            // and force a cache-busted request to get the latest data
-            setTimeout(() => {
-                loadDataFreshness();
-            }, 1500); // Increased delay to ensure database update completes
+            // Force multiple refresh attempts to ensure the UI updates
+            console.log('Starting data freshness refresh...');
+            
+            // First refresh after 1 second
+            setTimeout(async () => {
+                console.log('First refresh attempt...');
+                await loadDataFreshness();
+            }, 1000);
+            
+            // Second refresh after 2.5 seconds to ensure database is fully updated
+            setTimeout(async () => {
+                console.log('Second refresh attempt...');
+                await loadDataFreshness();
+            }, 2500);
             
         } else {
             showStatus(`❌ Update failed: ${result.message || 'Unknown error'}`, 'error');
