@@ -484,42 +484,166 @@ function showDataError() {
     }
 }
 
-// Refresh tax data
+// Update the refreshTaxData function to use the official source
 async function refreshTaxData() {
-    const refreshBtn = document.querySelector('.btn-refresh');
+    const refreshBtn = document.getElementById('refreshTaxData');
     const originalText = refreshBtn.innerHTML;
     
     try {
-        // Show loading state
-        refreshBtn.innerHTML = '⏳ Refreshing...';
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        showStatus('🔄 Checking for updated tax data...', 'success');
+        const response = await fetch('/api/tax-data/update-official', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
         
-        // Simulate API call to refresh data
-        // In production, this would call your backend API
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        const result = await response.json();
         
-        // Simulate successful update
-        const updatedData = {
-            source_date: new Date().toISOString().split('T')[0],
-            imported_date: new Date().toISOString().split('T')[0],
-            version_number: '2024.2',
-            update_frequency: 'quarterly',
-            days_since_import: 0
-        };
-        
-        updateDataFreshnessUI(updatedData);
-        showStatus('✅ Tax data successfully updated!', 'success');
-        
+        if (result.success) {
+            showNotification('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
+            
+            // Show detailed results
+            if (result.details) {
+                const details = result.details;
+                showNotification(
+                    `📊 Import Results: ${details.imported} imported, ${details.updated} updated, ${details.errors} errors`,
+                    'info'
+                );
+            }
+            
+            // Refresh the current search if there's one
+            const selectedCounty = document.getElementById('countySelect').value;
+            if (selectedCounty) {
+                await searchTaxes();
+            }
+            
+            // Update data freshness display
+            updateDataFreshnessDisplay();
+        } else {
+            showNotification(`❌ Update failed: ${result.message}`, 'error');
+        }
     } catch (error) {
-        console.error('Error refreshing tax data:', error);
-        showStatus('❌ Failed to refresh tax data. Please try again.', 'error');
+        console.error('Error updating tax data:', error);
+        showNotification('❌ Error updating tax data. Please try again.', 'error');
     } finally {
-        // Restore button state
         refreshBtn.innerHTML = originalText;
         refreshBtn.disabled = false;
     }
+}
+
+// Update the searchTaxes function to use comprehensive rate API
+async function searchTaxes() {
+    const county = document.getElementById('countySelect').value;
+    const city = document.getElementById('citySelect').value;
+    
+    if (!county) {
+        showNotification('Please select a county first.', 'warning');
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Calculating tax rates...</div>';
+    
+    try {
+        // Use the new comprehensive tax rate API
+        const response = await fetch(`/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`);
+        const data = await response.json();
+        
+        if (data.total_rate) {
+            displayComprehensiveResults(data);
+        } else {
+            // Fallback to original method if comprehensive data not available
+            const fallbackResponse = await fetch(`/api/tax-data/search?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city || '')}`);
+            const fallbackData = await fallbackResponse.json();
+            displayResults(fallbackData);
+        }
+    } catch (error) {
+        console.error('Error searching taxes:', error);
+        resultsDiv.innerHTML = '<div class="error">Error searching tax data. Please try again.</div>';
+    }
+}
+
+// New function to display comprehensive tax results
+function displayComprehensiveResults(data) {
+    const resultsDiv = document.getElementById('results');
+    
+    const html = `
+        <div class="tax-results">
+            <div class="location-header">
+                <h3><i class="fas fa-map-marker-alt"></i> ${data.location.county} County${data.location.city ? `, ${data.location.city}` : ''}</h3>
+            </div>
+            
+            <div class="total-rate">
+                <div class="rate-display">
+                    <span class="rate-number">${data.total_percentage}</span>
+                    <span class="rate-label">Total Sales Tax Rate</span>
+                </div>
+            </div>
+            
+            <div class="rate-breakdown">
+                <h4><i class="fas fa-chart-pie"></i> Tax Breakdown</h4>
+                <div class="breakdown-grid">
+                    ${data.breakdown.state !== '0.000%' ? `
+                        <div class="breakdown-item state">
+                            <span class="breakdown-label">State Tax</span>
+                            <span class="breakdown-rate">${data.breakdown.state}</span>
+                        </div>
+                    ` : ''}
+                    ${data.breakdown.county !== '0.000%' ? `
+                        <div class="breakdown-item county">
+                            <span class="breakdown-label">County Tax</span>
+                            <span class="breakdown-rate">${data.breakdown.county}</span>
+                        </div>
+                    ` : ''}
+                    ${data.breakdown.city !== '0.000%' ? `
+                        <div class="breakdown-item city">
+                            <span class="breakdown-label">City Tax</span>
+                            <span class="breakdown-rate">${data.breakdown.city}</span>
+                        </div>
+                    ` : ''}
+                    ${data.breakdown.special_districts !== '0.000%' ? `
+                        <div class="breakdown-item special">
+                            <span class="breakdown-label">Special Districts</span>
+                            <span class="breakdown-rate">${data.breakdown.special_districts}</span>
+                        </div>
+                    ` : ''}
+                    ${data.breakdown.transit !== '0.000%' ? `
+                        <div class="breakdown-item transit">
+                            <span class="breakdown-label">Transit Authority</span>
+                            <span class="breakdown-rate">${data.breakdown.transit}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            ${data.details && data.details.length > 0 ? `
+                <div class="detailed-breakdown">
+                    <h4><i class="fas fa-list-ul"></i> Detailed Tax Authorities</h4>
+                    <div class="authorities-list">
+                        ${data.details.map(detail => `
+                            <div class="authority-item">
+                                <div class="authority-info">
+                                    <span class="authority-name">${detail.jurisdiction}</span>
+                                    <span class="authority-type">${detail.type.replace('_', ' ')}</span>
+                                </div>
+                                <div class="authority-rate">${detail.rate_percentage}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="data-source">
+                <i class="fas fa-info-circle"></i>
+                <small>Data sourced from Texas State Comptroller of Public Accounts</small>
+            </div>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
 }
 
 // Show update history modal

@@ -1,137 +1,191 @@
 # Texas Restaurant Tax Scanner
 
-A modern web application that helps restaurant owners identify all applicable taxes for their POS configuration in Texas, with optional GPS location services.
+A comprehensive web application for identifying applicable sales tax rates for restaurant POS configuration in Texas. Now featuring **official data import** from the Texas State Comptroller's office.
 
-## Features
+## 🆕 What's New - Official Data Integration
 
-- 🍽️ **Restaurant-focused**: Specifically designed for food service businesses
-- 📍 **Smart Location**: GPS-based location detection with Google Maps integration
-- 💰 **Comprehensive**: Shows state, county, local, and special district taxes
-- 📊 **Export ready**: Download tax configurations as JSON or CSV for POS setup
-- 📱 **Mobile friendly**: Responsive design works on all devices
-- ⚡ **Fast**: Modular architecture with clean separation of concerns
+### The Problem We Solved
+Previously, Rockwall County was showing only 6.25% (state tax) instead of the correct 8.25% total rate because we were missing local tax data.
 
-## Quick Start
+### The Solution
+We now import **official tax rate data** directly from the Texas State Comptroller's office, ensuring:
+- ✅ **Complete tax breakdown** (state + county + city + special districts)
+- ✅ **Real-time accuracy** from the official source
+- ✅ **Comprehensive coverage** of all 254 Texas counties
+- ✅ **Automatic updates** from quarterly data releases
 
-### Option 1: Without Location Services
-1. Open `index.html` in your browser
-2. Manually select county and city
-3. Scan taxes and export results
+## 🚀 Quick Start
 
-### Option 2: With GPS Location Services
-1. **Get a Google Maps API Key**:
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a project and enable the "Geocoding API"
-   - Create an API key with domain restrictions
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-2. **Configure the Application**:
-   ```bash
-   cp config.example.js config.js
-   # Edit config.js and add your API key
-   ```
+### 2. Import Official Tax Data
+```bash
+# Import current tax rates from Texas State Comptroller
+npm run import-texas-rates
 
-3. **Open the Application**:
-   - Open `index.html` in your browser
-   - Click "Use My Location" for automatic detection
+# Test specific county
+npm run test-county Rockwall
+```
 
-## File Structure
+### 3. Start the Application
+```bash
+# Development mode with auto-reload
+npm run dev
+
+# Production mode
+npm start
+```
+
+### 4. Access the Application
+Open your browser to: `http://localhost:3001`
+
+## 📊 Features
+
+### Official Data Integration
+- **Direct import** from Texas State Comptroller's EDI files
+- **Quarterly updates** with official rate changes
+- **Complete tax breakdown** by jurisdiction type
+- **Historical data** tracking and version control
+
+### Comprehensive Tax Calculation
+- **Total tax rate** with detailed breakdown
+- **State tax** (6.25% base rate)
+- **County tax** (varies by county)
+- **City tax** (where applicable)
+- **Special districts** (transit, hospital, etc.)
+
+### Modern Web Interface
+- **Responsive design** for all devices
+- **Real-time search** with autocomplete
+- **Visual tax breakdown** with color-coded categories
+- **Data freshness indicators** and update history
+
+## 🏛️ Data Sources
+
+### Primary Source: Texas State Comptroller
+- **Official EDI files** updated quarterly
+- **Complete jurisdiction coverage** (all 254 counties)
+- **Authoritative tax rates** for POS compliance
+- **Historical rate tracking** for audit purposes
+
+### Data Update Process
+1. **Automatic detection** of new quarterly releases
+2. **Secure download** from comptroller.texas.gov
+3. **Intelligent parsing** of multiple file formats
+4. **Database integration** with version control
+5. **Validation** against existing data
+
+## 🔧 API Endpoints
+
+### Get Comprehensive Tax Rate
+```
+GET /api/tax-data/comprehensive-rate?county=Rockwall&city=Rockwall
+```
+
+### Update from Official Source
+```
+POST /api/tax-data/update-official
+```
+
+### Check Data Freshness
+```
+GET /api/tax-data/freshness
+```
+
+### View Update History
+```
+GET /api/tax-data/history
+```
+
+## 📁 Project Structure
 
 ```
 restaurant-tax-scanner/
-├── index.html          # Main HTML structure
-├── styles.css          # All CSS styles and responsive design
-├── script.js           # Application logic and Google Maps integration
-├── config.js           # Your API configuration (create from example)
-├── config.example.js   # Example configuration file
-├── netlify.toml        # Netlify deployment configuration
-├── .gitignore          # Prevents API keys from being committed
-└── README.md           # This documentation
+├── api/
+│   ├── server.js              # Express API server
+│   ├── tax-data-manager.js    # Database operations
+│   └── texas-tax-importer.js  # Official data importer
+├── scripts/
+│   └── import-texas-rates.js  # Import script
+├── database-schema.sql        # Database structure
+├── seed-texas-data.sql       # Initial county data
+├── index.html                # Main application
+├── styles.css                # Application styles
+├── script.js                 # Frontend logic
+└── config.js                 # Configuration
 ```
 
-## How to Use
+## 🎯 Example: Rockwall County
 
-1. **Select Location**: 
-   - Use "Use My Location" for GPS detection (requires API key)
-   - Or manually select county and city from dropdowns
+**Before (Missing Local Taxes):**
+- State Tax: 6.25%
+- **Total: 6.25%** ❌
 
-2. **Scan Taxes**:
-   - Click "Scan Taxes" to calculate applicable rates
-   - View detailed breakdown of all taxes
-   - See total combined rate
+**After (Complete Official Data):**
+- State Tax: 6.25%
+- County Tax: 2.00%
+- **Total: 8.25%** ✅
 
-3. **Export Data**:
-   - Export as JSON for API integration
-   - Export as CSV for spreadsheet analysis
+## 🔄 Updating Tax Data
 
-## Tax Types Covered
-
-- **State Sales Tax**: Texas statewide 6.25% rate
-- **County Tax**: County-level sales tax rates
-- **Local Tax**: City and municipal tax rates  
-- **Special Districts**: Transit authority and other special district taxes
-
-## Security & API Key Management
-
-### Setting Up Google Maps API
-1. **Create API Key**: Get one from [Google Cloud Console](https://console.cloud.google.com/)
-2. **Enable Services**: Enable "Geocoding API"
-3. **Secure Your Key**: 
-   - Add domain restrictions
-   - Limit to Geocoding API only
-   - Monitor usage and set quotas
-
-### Configuration
-- Copy `config.example.js` to `config.js`
-- Add your API key to `config.js`
-- **Never commit `config.js`** (it's in `.gitignore`)
-
-## Deployment
-
-### Netlify (Recommended)
-1. Push your code to GitHub (config.js will be ignored)
-2. Connect repository to Netlify
-3. Add your API key as an environment variable (optional)
-4. Deploy automatically
-
-### Other Static Hosts
-Upload all files except `config.js` to any static web host.
-
-## Technical Details
-
-- **Pure HTML/CSS/JavaScript**: No build process required
-- **Modular Architecture**: Separate files for HTML, CSS, and JavaScript
-- **Progressive Enhancement**: Works without API key, enhanced with location services
-- **Responsive Design**: Mobile-first approach
-- **Modern Browser Support**: ES6+ features
-
-## Development
-
-### Local Development
+### Manual Update
 ```bash
-# Start a local server
-python3 -m http.server 8000
-# Open http://localhost:8000
+npm run import-texas-rates
 ```
 
-### File Descriptions
+### Via Web Interface
+1. Click "Refresh Tax Data" button
+2. System downloads latest official rates
+3. Database automatically updates
+4. Results show import statistics
 
-- **`index.html`**: Clean HTML structure with semantic markup
-- **`styles.css`**: Modern CSS with gradients, animations, and responsive design
-- **`script.js`**: Application logic, Google Maps integration, and tax calculations
-- **`config.js`**: Your API configuration (create from example, not in git)
-- **`config.example.js`**: Template for API configuration
+### Scheduled Updates
+The system can be configured for automatic quarterly updates when new data is released.
 
-## Tax Data
+## 🛠️ Development
 
-Tax rates are based on current Texas state and local tax information. For the most up-to-date rates, consult the Texas Comptroller's office or your local tax authority.
+### Database Schema
+- **States, Counties, Cities** - Geographic hierarchy
+- **Tax Authorities** - Jurisdictional entities
+- **Tax Data** - Versioned rate information
+- **Update Logs** - Complete audit trail
 
-## Browser Support
+### Testing
+```bash
+# Test specific county lookup
+npm run test-county Harris
 
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
+# Test comprehensive rate calculation
+curl "http://localhost:3001/api/tax-data/comprehensive-rate?county=Rockwall"
+```
 
-## License
+## 📋 Requirements
+
+- **Node.js** 14.0.0 or higher
+- **SQLite3** (included with sqlite3 package)
+- **Internet connection** for official data downloads
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with official data
+5. Submit a pull request
+
+## 📄 License
 
 MIT License - see LICENSE file for details.
+
+## 🔗 Official Data Sources
+
+- [Texas State Comptroller - Sales Tax Rates](https://comptroller.texas.gov/taxes/file-pay/edi/sales-tax-rates.php)
+- [Local Sales Tax Rate History](https://mycpa.cpa.state.tx.us/taxrates/RateHist.do)
+- [Texas EDI Documentation](https://comptroller.texas.gov/taxes/file-pay/edi/)
+
+---
+
+**Built for Texas restaurants by Texas developers** 🤠

@@ -3,6 +3,7 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const TexasTaxImporter = require('./texas-tax-importer');
 
 class TaxDataManager {
     constructor(dbPath = './tax_database.db') {
@@ -335,6 +336,168 @@ class TaxDataManager {
                 }
             });
         });
+    }
+
+    /**
+     * Update tax data from official Texas State Comptroller source
+     */
+    async updateFromOfficialSource() {
+        const importer = new TexasTaxImporter(this.dbPath);
+        
+        try {
+            console.log('Starting official Texas tax data update...');
+            const result = await importer.updateTaxRates();
+            
+            // Update our data freshness tracking
+            await this.updateDataFreshness('Texas State Comptroller', new Date().toISOString());
+            
+            return {
+                success: true,
+                message: 'Tax data updated from official source',
+                details: result
+            };
+        } catch (error) {
+            console.error('Error updating from official source:', error);
+            return {
+                success: false,
+                message: 'Failed to update from official source',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get comprehensive tax rate for a location (combines all applicable taxes)
+     */
+    async getComprehensiveTaxRate(countyName, cityName = null) {
+        if (!this.db) {
+            await this.connect();
+        }
+
+        return new Promise((resolve, reject) => {
+            let query = `
+                SELECT 
+                    c.name as county_name,
+                    ci.name as city_name,
+                    t.name as tax_name,
+                    t.rate,
+                    t.is_percentage,
+                    ta.name as authority_name,
+                    tt.name as tax_type,
+                    t.effective_date,
+                    t.expiration_date
+                FROM taxes t
+                JOIN tax_authorities ta ON t.authority_id = ta.id
+                JOIN tax_types tt ON ta.type_id = tt.id
+                LEFT JOIN counties c ON ta.county_id = c.id
+                LEFT JOIN cities ci ON ta.city_id = ci.id
+                WHERE (
+                    -- State taxes (apply everywhere)
+                    (ta.state_id = 1 AND ta.county_id IS NULL AND ta.city_id IS NULL) OR
+                    -- County taxes (only for the specified county)
+                    (c.name LIKE ? AND ta.city_id IS NULL) OR
+                    -- City taxes (only for the specified city in the specified county)
+                    (ci.name LIKE ? AND c.name LIKE ?)
+                )
+                AND (t.expiration_date IS NULL OR t.expiration_date > date('now'))
+                ORDER BY tt.name, t.effective_date DESC
+            `;
+
+            const params = [`%${countyName}%`];
+            if (cityName) {
+                params.push(`%${cityName}%`, `%${countyName}%`);
+            } else {
+                params.push(null, `%${countyName}%`);
+            }
+
+            this.db.all(query, params, (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                // Group taxes by type and calculate totals
+                const taxBreakdown = {
+                    state: [],
+                    county: [],
+                    city: [],
+                    special: []
+                };
+
+                let totalRate = 0;
+                const authorities = new Set();
+
+                rows.forEach(row => {
+                    if (row.is_percentage) {
+                        totalRate += parseFloat(row.rate);
+                    }
+
+                    const taxInfo = {
+                        name: row.tax_name,
+                        rate: parseFloat(row.rate),
+                        authority: row.authority_name,
+                        effective_date: row.effective_date,
+                        expiration_date: row.expiration_date
+                    };
+
+                    authorities.add(row.authority_name);
+
+                    switch (row.tax_type) {
+                        case 'state':
+                            taxBreakdown.state.push(taxInfo);
+                            break;
+                        case 'county':
+                            taxBreakdown.county.push(taxInfo);
+                            break;
+                        case 'city':
+                            taxBreakdown.city.push(taxInfo);
+                            break;
+                        default:
+                            taxBreakdown.special.push(taxInfo);
+                    }
+                });
+
+                resolve({
+                    location: {
+                        county: countyName,
+                        city: cityName
+                    },
+                    total_rate: parseFloat(totalRate.toFixed(4)),
+                    breakdown: taxBreakdown,
+                    authorities: Array.from(authorities),
+                    last_updated: new Date().toISOString(),
+                    data_completeness: this.assessDataCompleteness(taxBreakdown)
+                });
+            });
+        });
+    }
+
+    /**
+     * Assess data completeness for a location
+     */
+    assessDataCompleteness(breakdown) {
+        const hasState = breakdown.state.length > 0;
+        const hasCounty = breakdown.county.length > 0;
+        
+        if (hasState && hasCounty) {
+            return {
+                status: 'complete',
+                message: 'All major tax components found',
+                confidence: 'high'
+            };
+        } else if (hasState) {
+            return {
+                status: 'partial',
+                message: 'State tax found, local taxes may be missing',
+                confidence: 'medium'
+            };
+        } else {
+            return {
+                status: 'incomplete',
+                message: 'Tax data appears incomplete',
+                confidence: 'low'
+            };
+        }
     }
 }
 
