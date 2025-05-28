@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, '..')));
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
     
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
@@ -140,4 +140,4 @@ app.listen(port, () => {
     console.log(`🔗 API endpoints available at: http://localhost:${port}/api/`);
 });
 
-module.exports = app; 
+module.exports = app;
