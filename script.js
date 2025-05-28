@@ -528,9 +528,15 @@ function showStatus(message, type) {
 // Load data freshness information
 async function loadDataFreshness() {
     try {
-        // Call the actual API endpoint with cache busting
-        const cacheBuster = new Date().getTime();
-        const response = await fetch(`http://localhost:3001/api/tax-data/freshness?_=${cacheBuster}`);
+        // Call the actual API endpoint with strong cache busting
+        const cacheBuster = Date.now() + Math.random();
+        const response = await fetch(`http://localhost:3001/api/tax-data/freshness?_=${cacheBuster}`, {
+            cache: 'no-cache',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
         
         if (response.ok) {
             const data = await response.json();
@@ -544,11 +550,11 @@ async function loadDataFreshness() {
         
         // Fallback to mock data if API is not available
         const mockDataFreshness = {
-            source_date: '2024-01-01',
-            imported_date: '2024-01-15',
-            version_number: '2024.1',
+            source_date: '2025-05-01',
+            imported_date: '2025-05-28',
+            version_number: '2025.Q2',
             update_frequency: 'quarterly',
-            days_since_import: 15
+            days_since_import: 0
         };
         
         updateDataFreshnessUI(mockDataFreshness);
@@ -655,20 +661,6 @@ async function refreshTaxData() {
         refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        // Update the "Last Checked" timestamp immediately with local time
-        const lastCheckedElement = document.getElementById('lastChecked');
-        if (lastCheckedElement) {
-            const now = new Date();
-            lastCheckedElement.textContent = now.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-        
         const response = await fetch('http://localhost:3001/api/tax-data/update-official', {
             method: 'POST',
             headers: {
@@ -696,10 +688,11 @@ async function refreshTaxData() {
                 }
             }
             
-            // Refresh data freshness display after a short delay to ensure database is updated
+            // Refresh data freshness display after a longer delay to ensure database is updated
+            // and force a cache-busted request to get the latest data
             setTimeout(() => {
                 loadDataFreshness();
-            }, 500);
+            }, 1500); // Increased delay to ensure database update completes
             
         } else {
             showStatus(`❌ Update failed: ${result.message || 'Unknown error'}`, 'error');
