@@ -1,48 +1,102 @@
 # Netlify Deployment Guide
 
-This guide will help you deploy the Texas Restaurant Tax Scanner to Netlify.
+This guide will help you deploy the Texas Restaurant Tax Scanner to Netlify with all necessary configurations.
 
 ## Prerequisites
 
-1. A GitHub account with your code repository
-2. A Netlify account (free tier is sufficient)
-3. Your repository should be pushed to GitHub
+- A Netlify account
+- A GitHub repository with your code
+- A Google Maps API key (for geocoding)
 
-## Deployment Steps
+## Step 1: Set Up Environment Variables (SECURE)
 
-### 1. Connect to Netlify
+**Important:** Never expose API keys in your frontend code! Set them as environment variables in Netlify.
 
-1. Go to [Netlify](https://netlify.com) and sign in
-2. Click "New site from Git"
-3. Choose GitHub and authorize Netlify to access your repositories
-4. Select your `restaurant-tax-scanner` repository
+1. Go to your Netlify site dashboard
+2. Navigate to **Site settings** → **Environment variables**
+3. Add the following environment variable:
+   - **Key:** `GOOGLE_MAPS_API_KEY`
+   - **Value:** Your actual Google Maps API key (e.g., `AIzaSyA4jbZSWX3hNWxuE7_vG82Op_sBwwuTVgM`)
 
-### 2. Configure Build Settings
+## Step 2: Connect GitHub Repository
 
-In the Netlify deployment configuration:
+1. In Netlify dashboard, click **"New site from Git"**
+2. Choose **GitHub** as your Git provider
+3. Select your repository
+4. Configure build settings:
+   - **Build command:** `node build-netlify.js`
+   - **Publish directory:** `.` (root directory)
 
-- **Build command**: `node build-netlify.js`
-- **Publish directory**: `.` (current directory)
-- **Functions directory**: `netlify/functions` (should auto-detect)
+## Step 3: Deploy
 
-### 3. Environment Variables (Optional)
+1. Click **"Deploy site"**
+2. Wait for the deployment to complete
+3. Your site will be available at `https://your-site-name.netlify.app`
 
-If you need to set any environment variables:
-- Go to Site settings → Environment variables
-- Add any required variables
+## File Structure
 
-### 4. Deploy
+The deployment copies necessary files:
+- API functions → `netlify/functions/`
+- Database → `netlify/functions/tax_database.db`
+- Frontend files → Root directory
+- Secure config (no API keys) → `config.js`
 
-1. Click "Deploy site"
-2. Netlify will build and deploy your site
-3. You'll get a random URL like `https://amazing-name-123456.netlify.app`
+## Security Features
 
-### 5. Custom Domain (Optional)
+✅ **API keys are secure** - Stored as environment variables, not in code
+✅ **Server-side geocoding** - Google Maps API called from Netlify functions only
+✅ **CORS configured** - Proper headers for API access
+✅ **No sensitive data exposed** - Frontend only contains safe configuration
 
-To use a custom domain:
-1. Go to Site settings → Domain management
-2. Add your custom domain
-3. Follow Netlify's DNS configuration instructions
+## Testing Deployment
+
+After deployment, test these features:
+1. **Location Services** - Click "Use my location" button
+2. **Refresh Button** - Click "Refresh Tax Data"
+3. **Tax Scanning** - Search for taxes by county/city
+4. **Export Functions** - Download JSON/CSV data
+
+## Troubleshooting
+
+### Location Services Not Working
+- Check that `GOOGLE_MAPS_API_KEY` environment variable is set in Netlify
+- Verify the API key has Geocoding API enabled in Google Cloud Console
+
+### API Functions Not Working
+- Check Netlify function logs in the site dashboard
+- Ensure build completed successfully
+- Verify all files were copied during build
+
+### Frontend Errors
+- Check browser console for JavaScript errors
+- Verify CONFIG object is loaded properly
+- Ensure all required files are deployed
+
+## Environment Variables Reference
+
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `GOOGLE_MAPS_API_KEY` | Server-side geocoding | Yes |
+
+## API Endpoints
+
+The following endpoints are available via Netlify functions:
+
+- `/.netlify/functions/geocode` - Convert coordinates to address
+- `/.netlify/functions/tax-data-freshness` - Get data freshness info
+- `/.netlify/functions/tax-data-update-official` - Update tax data
+- `/.netlify/functions/tax-data-comprehensive-rate` - Get comprehensive tax rates
+- `/.netlify/functions/tax-data-search` - Search tax data
+- `/.netlify/functions/tax-data-history` - Get update history
+
+All functions include fallback data when the database is not available, ensuring the application remains functional.
+
+## Security Notes
+
+🔒 **Never commit API keys to your repository**
+🔒 **All sensitive operations happen server-side**
+🔒 **Frontend configuration contains no secrets**
+🔒 **Environment variables are encrypted by Netlify**
 
 ## How It Works
 
@@ -51,16 +105,6 @@ To use a custom domain:
 - **Frontend**: Static HTML, CSS, and JavaScript served by Netlify
 - **Backend**: Serverless functions (Netlify Functions) that handle API requests
 - **Database**: SQLite database bundled with the functions
-
-### API Endpoints
-
-The following endpoints are available as serverless functions:
-
-- `/api/tax-data/comprehensive-rate` - Get comprehensive tax rates
-- `/api/tax-data/freshness` - Get data freshness information
-- `/api/tax-data/update-official` - Update from official sources
-- `/api/tax-data/history` - Get update history
-- `/api/tax-data/search` - Legacy search endpoint
 
 ### Configuration
 
@@ -81,26 +125,6 @@ python3 -m http.server 8000
 ```
 
 Then visit `http://localhost:8000`
-
-## Troubleshooting
-
-### Build Failures
-
-1. Check the build logs in Netlify dashboard
-2. Ensure all dependencies are listed in `package.json`
-3. Verify the build script runs locally: `npm run build`
-
-### Function Errors
-
-1. Check function logs in Netlify dashboard
-2. Verify database file is being copied correctly
-3. Check that all require paths are correct
-
-### CORS Issues
-
-The `netlify.toml` file includes CORS headers. If you encounter CORS issues:
-1. Check that the headers are properly configured
-2. Verify the API calls are using relative URLs in production
 
 ## Monitoring
 

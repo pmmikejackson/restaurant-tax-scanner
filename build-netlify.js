@@ -42,6 +42,24 @@ if (fs.existsSync(dbSrc)) {
     console.warn('⚠️  Database file not found');
 }
 
+// Copy config.js to root for frontend access
+const configSrc = path.join(__dirname, 'config.js');
+const configDest = path.join(__dirname, 'config.js'); // Keep in root
+
+if (fs.existsSync(configSrc)) {
+    console.log('✅ Config.js exists in root directory');
+} else {
+    console.warn('⚠️ Config.js not found - creating secure config');
+    const secureConfig = `// Secure configuration for Netlify deployment
+// No API keys exposed to frontend!
+const CONFIG = {
+    API_BASE_URL: ''
+};
+window.CONFIG = CONFIG;`;
+    fs.writeFileSync(configSrc, secureConfig);
+    console.log('✅ Created secure config.js (no API keys)');
+}
+
 // Update require paths in the utility file
 const utilsFile = path.join(functionsDir, 'utils', 'tax-manager.js');
 if (fs.existsSync(utilsFile)) {

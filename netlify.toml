@@ -1,4 +1,5 @@
 [build]
+  command = "node build-netlify.js"
   publish = "."
   functions = "netlify/functions"
 
@@ -10,6 +11,12 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  conditions = {Role = ["admin"]}
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -17,10 +24,18 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Cache-Control, Pragma"
 
 [[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type, Cache-Control, Pragma"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS" 
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8" 

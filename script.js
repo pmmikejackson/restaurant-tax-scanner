@@ -1,3 +1,18 @@
+// Configuration fallback - in case embedded config doesn't load
+if (typeof CONFIG === 'undefined') {
+    window.CONFIG = {
+        API_BASE_URL: (() => {
+            if (window.location.hostname.includes('netlify.app') || 
+                window.location.hostname.includes('netlify.com') ||
+                window.location.hostname !== 'localhost') {
+                return '';
+            } else {
+                return 'http://localhost:3001';
+            }
+        })()
+    };
+}
+
 // Configuration - Replace with your Google Maps API key
 const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
 
@@ -56,6 +71,11 @@ let currentTaxData = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Application initializing...');
+    console.log('🔧 CONFIG object:', window.CONFIG);
+    console.log('🌐 API Base URL:', window.CONFIG?.API_BASE_URL);
+    console.log('🔒 Using secure server-side geocoding (no API key exposed)');
+    
     initializeApp();
     loadDataFreshness();
 });
@@ -87,12 +107,23 @@ function setupEventListeners() {
     });
 }
 
-// Load Google Maps API dynamically
+// Load Google Maps API dynamically (only for local development)
 function loadGoogleMapsAPI() {
-    const apiKey = window.CONFIG?.GOOGLE_MAPS_API_KEY;
+    // For production/Netlify, we use server-side geocoding via Netlify functions
+    // No API key is exposed to the frontend for security
     
-    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-        console.warn('Google Maps API key not configured. Location services will work with basic coordinates only.');
+    const isLocal = window.location.hostname === 'localhost';
+    
+    if (!isLocal) {
+        console.log('🔒 Using secure server-side geocoding (production mode)');
+        return;
+    }
+    
+    // For local development, you can set your API key here if needed
+    const localApiKey = 'YOUR_LOCAL_GOOGLE_MAPS_API_KEY_HERE';
+    
+    if (!localApiKey || localApiKey === 'YOUR_LOCAL_GOOGLE_MAPS_API_KEY_HERE') {
+        console.warn('⚠️ Local Google Maps API key not configured. Using server-side geocoding fallback.');
         return;
     }
 
@@ -100,15 +131,15 @@ function loadGoogleMapsAPI() {
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
         console.warn('HTTPS required for geolocation. Location services may not work.');
     }
-
+    
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${localApiKey}&libraries=geometry&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
     
     // Add error handling for script loading
     script.onerror = function() {
-        console.error('Failed to load Google Maps API - location services will work with basic coordinates only');
+        console.error('Failed to load Google Maps API - using server-side geocoding fallback');
     };
     
     document.head.appendChild(script);
@@ -717,6 +748,20 @@ function showStatus(message, type) {
 // Load data freshness information
 async function loadDataFreshness() {
     console.log('📊 loadDataFreshness function called');
+    
+    // Check if CONFIG is available
+    if (typeof CONFIG === 'undefined' || !window.CONFIG) {
+        console.error('❌ CONFIG object not available, using fallback values');
+        updateDataFreshnessUI({
+            source_date: '2025-05-01',
+            imported_date: '2025-05-28',
+            version_number: '2025.Q2',
+            update_frequency: 'quarterly',
+            days_since_import: 0,
+            last_checked: new Date().toISOString()
+        });
+        return;
+    }
     
     try {
         // Call the actual API endpoint with strong cache busting
