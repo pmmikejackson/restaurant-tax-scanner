@@ -528,8 +528,20 @@ function showStatus(message, type) {
 // Load data freshness information
 async function loadDataFreshness() {
     try {
-        // For now, simulate API call with static data
-        // In production, this would call your backend API
+        // Call the actual API endpoint
+        const response = await fetch('http://localhost:3001/api/tax-data/freshness');
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateDataFreshnessUI(data);
+        } else {
+            console.error('Failed to load data freshness:', response.status);
+            showDataError();
+        }
+    } catch (error) {
+        console.error('Error loading data freshness:', error);
+        
+        // Fallback to mock data if API is not available
         const mockDataFreshness = {
             source_date: '2024-01-01',
             imported_date: '2024-01-15',
@@ -539,9 +551,6 @@ async function loadDataFreshness() {
         };
         
         updateDataFreshnessUI(mockDataFreshness);
-    } catch (error) {
-        console.error('Error loading data freshness:', error);
-        showDataError();
     }
 }
 
