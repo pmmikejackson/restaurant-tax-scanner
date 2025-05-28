@@ -922,12 +922,29 @@ function displayUpdateHistory(contentElement, history) {
 // Utility functions
 function formatDate(dateString) {
     if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    
+    try {
+        let date;
+        
+        // Handle date-only strings (YYYY-MM-DD) to avoid timezone conversion
+        if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // For date-only strings, create date in local timezone
+            const parts = dateString.split('-');
+            date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        } else {
+            // For full datetime strings, use normal parsing
+            date = new Date(dateString);
+        }
+        
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Invalid date';
+    }
 }
 
 function formatDateTime(dateString) {
