@@ -171,3 +171,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+.vercel
+
+# Local Netlify folder
+.netlify

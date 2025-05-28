@@ -325,66 +325,260 @@
 
     <!-- Load configuration securely from API -->
     <script>
-        // Load API key from secure endpoint
-        async function loadConfig() {
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                window.GOOGLE_MAPS_API_KEY = config.googleMapsApiKey;
-            } catch (error) {
-                console.warn('Could not load API configuration:', error);
-                window.GOOGLE_MAPS_API_KEY = null;
-            }
+        // Secure Google Maps integration using serverless function
+        // API key is kept secure on the server side
+        
+        let map;
+        let geocoder;
+
+        // Initialize without loading Google Maps API directly
+        function initMap() {
+            console.log('Geocoding service initialized (serverless)');
         }
         
-        // Load config before initializing the app
-        loadConfig();
+        // Load the API when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
+
+        // Serverless reverse geocoding function
+        async function reverseGeocode(lat, lng) {
+            try {
+                const response = await fetch('/.netlify/functions/geocode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ lat, lng })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Parse the geocoding results
+                parseGeocodingResults(data.results);
+                
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                showStatus('❌ Could not determine location. Please enter manually.', 'error');
+            }
+        }
+
+        // Parse geocoding results and populate form
+        function parseGeocodingResults(results) {
+            if (!results || results.length === 0) {
+                showStatus('❌ No location data found. Please enter manually.', 'error');
+                return;
+            }
+
+            let county = null;
+            let city = null;
+            let zip = null;
+
+            // Extract location components
+            for (const result of results) {
+                for (const component of result.address_components) {
+                    const types = component.types;
+                    
+                    if (types.includes('administrative_area_level_2')) {
+                        // This is the county
+                        let countyName = component.long_name.toLowerCase();
+                        // Remove "County" from the end if present
+                        countyName = countyName.replace(/\s+county$/i, '');
+                        // Convert to slug format
+                        county = countyName.replace(/\s+/g, '-');
+                    }
+                    
+                    if (types.includes('locality') || types.includes('sublocality')) {
+                        city = component.long_name.toLowerCase().replace(/\s+/g, '-');
+                    }
+                    
+                    if (types.includes('postal_code')) {
+                        zip = component.long_name;
+                    }
+                }
+            }
+
+            // Populate form fields
+            if (county) {
+                document.getElementById('county').value = county;
+                // Trigger county change to populate cities
+                document.getElementById('county').dispatchEvent(new Event('input'));
+            }
+            
+            if (city) {
+                setTimeout(() => {
+                    document.getElementById('city').value = city;
+                }, 100);
+            }
+            
+            if (zip) {
+                document.getElementById('zip').value = zip;
+            }
+
+            // Show success message
+            const countyDisplay = countyNameMapping[county] || county;
+            const cityDisplay = city ? city.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+            showStatus(`📍 Location found: ${cityDisplay}${cityDisplay && countyDisplay ? ', ' : ''}${countyDisplay}`, 'success');
+        }
+
+        // Use My Location function
+        function useLocation() {
+            if (!navigator.geolocation) {
+                showStatus('Geolocation is not supported by this browser.', 'error');
+                return;
+            }
+
+            showStatus('🌍 Getting your location...', 'success');
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    showStatus('📍 Location found! Looking up address...', 'success');
+                    
+                    // Use serverless function for reverse geocoding
+                    reverseGeocode(lat, lng);
+                },
+                function(error) {
+                    let errorMsg = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg += 'Location access denied by user.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMsg += 'Unknown error occurred.';
+                            break;
+                    }
+                    showStatus(errorMsg + ' Please select manually.', 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
+                }
+            );
+        }
     </script>
     
     <!-- Database API Integration -->
     <script>
-        // Override the existing functions to use the database API
-        let counties = [];
+        // County name mapping for geocoding
+        const countyNameMapping = {
+            'anderson': 'Anderson County', 'andrews': 'Andrews County', 'angelina': 'Angelina County', 'aransas': 'Aransas County', 'archer': 'Archer County', 'armstrong': 'Armstrong County', 'atascosa': 'Atascosa County', 'austin': 'Austin County', 'bailey': 'Bailey County', 'bandera': 'Bandera County', 'bastrop': 'Bastrop County', 'baylor': 'Baylor County', 'bee': 'Bee County', 'bell': 'Bell County', 'bexar': 'Bexar County', 'blanco': 'Blanco County', 'borden': 'Borden County', 'bosque': 'Bosque County', 'bowie': 'Bowie County', 'brazoria': 'Brazoria County', 'brazos': 'Brazos County', 'brewster': 'Brewster County', 'briscoe': 'Briscoe County', 'brown': 'Brown County', 'burleson': 'Burleson County', 'burnet': 'Burnet County', 'caldwell': 'Caldwell County', 'calhoun': 'Calhoun County', 'callahan': 'Callahan County', 'cameron': 'Cameron County', 'camp': 'Camp County', 'carson': 'Carson County', 'cass': 'Cass County', 'castro': 'Castro County', 'chambers': 'Chambers County', 'cherokee': 'Cherokee County', 'childress': 'Childress County', 'clay': 'Clay County', 'cochran': 'Cochran County', 'coke': 'Coke County', 'coleman': 'Coleman County', 'collin': 'Collin County', 'collingsworth': 'Collingsworth County', 'colorado': 'Colorado County', 'comal': 'Comal County', 'comanche': 'Comanche County', 'concho': 'Concho County', 'cooke': 'Cooke County', 'coryell': 'Coryell County', 'cottle': 'Cottle County', 'crane': 'Crane County', 'crockett': 'Crockett County', 'crosby': 'Crosby County', 'culberson': 'Culberson County', 'dallam': 'Dallam County', 'dallas': 'Dallas County', 'dawson': 'Dawson County', 'deaf-smith': 'Deaf Smith County', 'delta': 'Delta County', 'denton': 'Denton County', 'dewitt': 'DeWitt County', 'dickens': 'Dickens County', 'donley': 'Donley County', 'eastland': 'Eastland County', 'ector': 'Ector County', 'edwards': 'Edwards County', 'el-paso': 'El Paso County', 'ellis': 'Ellis County', 'erath': 'Erath County', 'falls': 'Falls County', 'fannin': 'Fannin County', 'fayette': 'Fayette County', 'fisher': 'Fisher County', 'floyd': 'Floyd County', 'foard': 'Foard County', 'fort-bend': 'Fort Bend County', 'franklin': 'Franklin County', 'freestone': 'Freestone County', 'frio': 'Frio County', 'gaines': 'Gaines County', 'galveston': 'Galveston County', 'garza': 'Garza County', 'gillespie': 'Gillespie County', 'glasscock': 'Glasscock County', 'goliad': 'Goliad County', 'gonzales': 'Gonzales County', 'gray': 'Gray County', 'grayson': 'Grayson County', 'gregg': 'Gregg County', 'grimes': 'Grimes County', 'guadalupe': 'Guadalupe County', 'hale': 'Hale County', 'hall': 'Hall County', 'hamilton': 'Hamilton County', 'hansford': 'Hansford County', 'hardeman': 'Hardeman County', 'hardin': 'Hardin County', 'harris': 'Harris County', 'harrison': 'Harrison County', 'hartley': 'Hartley County', 'haskell': 'Haskell County', 'hays': 'Hays County', 'hemphill': 'Hemphill County', 'henderson': 'Henderson County', 'hidalgo': 'Hidalgo County', 'hill': 'Hill County', 'hockley': 'Hockley County', 'hood': 'Hood County', 'hopkins': 'Hopkins County', 'houston': 'Houston County', 'howard': 'Howard County', 'hudspeth': 'Hudspeth County', 'hunt': 'Hunt County', 'hutchinson': 'Hutchinson County', 'irion': 'Irion County', 'jack': 'Jack County', 'jackson': 'Jackson County', 'jasper': 'Jasper County', 'jeff-davis': 'Jeff Davis County', 'jefferson': 'Jefferson County', 'johnson': 'Johnson County', 'jones': 'Jones County', 'karnes': 'Karnes County', 'kaufman': 'Kaufman County', 'kendall': 'Kendall County', 'kenedy': 'Kenedy County', 'kent': 'Kent County', 'kerr': 'Kerr County', 'kimble': 'Kimble County', 'king': 'King County', 'kinney': 'Kinney County', 'kleberg': 'Kleberg County', 'knox': 'Knox County', 'la-salle': 'La Salle County', 'lamar': 'Lamar County', 'lamb': 'Lamb County', 'lampasas': 'Lampasas County', 'lavaca': 'Lavaca County', 'lee': 'Lee County', 'leon': 'Leon County', 'liberty': 'Liberty County', 'limestone': 'Limestone County', 'lipscomb': 'Lipscomb County', 'live-oak': 'Live Oak County', 'llano': 'Llano County', 'loving': 'Loving County', 'lubbock': 'Lubbock County', 'lynn': 'Lynn County', 'madison': 'Madison County', 'marion': 'Marion County', 'martin': 'Martin County', 'mason': 'Mason County', 'matagorda': 'Matagorda County', 'maverick': 'Maverick County', 'mcculloch': 'McCulloch County', 'mclennan': 'McLennan County', 'mcmullen': 'McMullen County', 'medina': 'Medina County', 'menard': 'Menard County', 'midland': 'Midland County', 'milam': 'Milam County', 'mills': 'Mills County', 'mitchell': 'Mitchell County', 'montague': 'Montague County', 'montgomery': 'Montgomery County', 'moore': 'Moore County', 'morris': 'Morris County', 'motley': 'Motley County', 'nacogdoches': 'Nacogdoches County', 'navarro': 'Navarro County', 'newton': 'Newton County', 'nolan': 'Nolan County', 'nueces': 'Nueces County', 'ochiltree': 'Ochiltree County', 'oldham': 'Oldham County', 'orange': 'Orange County', 'palo-pinto': 'Palo Pinto County', 'panola': 'Panola County', 'parker': 'Parker County', 'parmer': 'Parmer County', 'pecos': 'Pecos County', 'polk': 'Polk County', 'potter': 'Potter County', 'presidio': 'Presidio County', 'rains': 'Rains County', 'randall': 'Randall County', 'reagan': 'Reagan County', 'real': 'Real County', 'red-river': 'Red River County', 'reeves': 'Reeves County', 'refugio': 'Refugio County', 'roberts': 'Roberts County', 'robertson': 'Robertson County', 'rockwall': 'Rockwall County', 'runnels': 'Runnels County', 'rusk': 'Rusk County', 'sabine': 'Sabine County', 'san-augustine': 'San Augustine County', 'san-jacinto': 'San Jacinto County', 'san-patricio': 'San Patricio County', 'san-saba': 'San Saba County', 'schleicher': 'Schleicher County', 'scurry': 'Scurry County', 'shackelford': 'Shackelford County', 'shelby': 'Shelby County', 'sherman': 'Sherman County', 'smith': 'Smith County', 'somervell': 'Somervell County', 'starr': 'Starr County', 'stephens': 'Stephens County', 'sterling': 'Sterling County', 'stonewall': 'Stonewall County', 'sutton': 'Sutton County', 'swisher': 'Swisher County', 'tarrant': 'Tarrant County', 'taylor': 'Taylor County', 'terrell': 'Terrell County', 'terry': 'Terry County', 'throckmorton': 'Throckmorton County', 'titus': 'Titus County', 'tom-green': 'Tom Green County', 'travis': 'Travis County', 'trinity': 'Trinity County', 'tyler': 'Tyler County', 'upshur': 'Upshur County', 'upton': 'Upton County', 'uvalde': 'Uvalde County', 'val-verde': 'Val Verde County', 'van-zandt': 'Van Zandt County', 'victoria': 'Victoria County', 'walker': 'Walker County', 'waller': 'Waller County', 'ward': 'Ward County', 'washington': 'Washington County', 'webb': 'Webb County', 'wharton': 'Wharton County', 'wheeler': 'Wheeler County', 'wichita': 'Wichita County', 'wilbarger': 'Wilbarger County', 'willacy': 'Willacy County', 'williamson': 'Williamson County', 'wilson': 'Wilson County', 'winkler': 'Winkler County', 'wise': 'Wise County', 'wood': 'Wood County', 'yoakum': 'Yoakum County', 'young': 'Young County', 'zapata': 'Zapata County', 'zavala': 'Zavala County'
+        };
+
+        // Texas county to city mapping
+        const countyToCities = {
+            'harris': ['Alvin', 'Atascocita', 'Baytown', 'Bellaire', 'Bunker Hill Village', 'Clear Lake', 'Cloverleaf', 'Conroe', 'Cypress', 'Deer Park', 'Friendswood', 'Galena Park', 'Hedwig Village', 'Hilshire Village', 'Houston', 'Humble', 'Hunters Creek Village', 'Jacinto City', 'Katy', 'Kemah', 'Kingwood', 'La Porte', 'League City', 'Manvel', 'Missouri City', 'Pasadena', 'Pearland', 'Piney Point Village', 'Seabrook', 'South Houston', 'Southside Place', 'Spring', 'Spring Valley', 'Stafford', 'Sugar Land', 'Tomball', 'West University Place'],
+            'dallas': ['Addison', 'Balch Springs', 'Carrollton', 'Cockrell Hill', 'Combine', 'Coppell', 'Dallas', 'DeSoto', 'Duncanville', 'Farmers Branch', 'Garland', 'Glenn Heights', 'Grand Prairie', 'Highland Park', 'Hutchins', 'Irving', 'Lancaster', 'Mesquite', 'Plano', 'Richardson', 'Rowlett', 'Sachse', 'Seagoville', 'Sunnyvale', 'University Park', 'Wilmer'],
+            'tarrant': ['Arlington', 'Azle', 'Bedford', 'Benbrook', 'Blue Mound', 'Burleson', 'Carrollton', 'Colleyville', 'Crowley', 'Euless', 'Everman', 'Forest Hill', 'Fort Worth', 'Grand Prairie', 'Grapevine', 'Haltom City', 'Hurst', 'Keller', 'Kennedale', 'Lake Worth', 'Mansfield', 'North Richland Hills', 'Richland Hills', 'River Oaks', 'Saginaw', 'Sansom Park', 'Southlake', 'Watauga', 'Westover Hills', 'Westworth Village', 'White Settlement'],
+            'bexar': ['Alamo Heights', 'Balcones Heights', 'Castle Hills', 'China Grove', 'Converse', 'Elmendorf', 'Fair Oaks Ranch', 'Grey Forest', 'Helotes', 'Hill Country Village', 'Hollywood Park', 'Kirby', 'Leon Valley', 'Live Oak', 'Macdona', 'Olmos Park', 'San Antonio', 'Schertz', 'Selma', 'Shavano Park', 'Somerset', 'Terrell Hills', 'Universal City', 'Windcrest'],
+            'travis': ['Austin', 'Barton Creek', 'Bee Cave', 'Briarcliff', 'Cedar Park', 'Creedmoor', 'Del Valle', 'Elgin', 'Garfield', 'Hornsby Bend', 'Jonestown', 'Lago Vista', 'Lakeway', 'Manor', 'McNeil', 'Mustang Ridge', 'Pflugerville', 'Point Venture', 'Rollingwood', 'Sunset Valley', 'Volente', 'Wells Branch', 'West Lake Hills']
+        };
+
+        // Static tax data (simplified version for Netlify deployment)
         let currentTaxData = null;
 
-        // Load counties from database
-        async function loadCountiesFromDB() {
-            try {
-                const response = await fetch('/api/counties');
-                counties = await response.json();
-                populateCountyDropdown();
-            } catch (error) {
-                console.error('Error loading counties:', error);
-                showStatus('Error loading counties from database', 'error');
-            }
-        }
+        // Generate tax data based on county and city
+        function generateTaxData(county, city, zip) {
+            const baseTaxes = [{
+                name: 'Texas State Sales Tax',
+                rate: 6.25,
+                is_percentage: true,
+                description: 'Statewide sales tax applied to all taxable sales',
+                applies_to: 'All food and beverage sales',
+                type: 'state'
+            }];
 
-        // Populate county dropdown with database data
-        function populateCountyDropdown() {
-            const datalist = document.getElementById('county-list');
-            datalist.innerHTML = '';
+            const countyTaxes = {
+                'harris': [
+                    { name: 'Harris County Tax', rate: 1.00, is_percentage: true, description: 'County-level sales tax', applies_to: 'All taxable sales', type: 'county' },
+                    { name: 'Metro Transit Tax', rate: 1.00, is_percentage: true, description: 'Transportation authority tax', applies_to: 'All taxable sales', type: 'special' }
+                ],
+                'dallas': [
+                    { name: 'Dallas County Tax', rate: 0.50, is_percentage: true, description: 'County-level sales tax', applies_to: 'All taxable sales', type: 'county' },
+                    { name: 'DART Tax', rate: 1.00, is_percentage: true, description: 'Dallas Area Rapid Transit tax', applies_to: 'All taxable sales', type: 'special' }
+                ],
+                'travis': [
+                    { name: 'Travis County Tax', rate: 0.75, is_percentage: true, description: 'County-level sales tax', applies_to: 'All taxable sales', type: 'county' },
+                    { name: 'Austin Bag Fee', rate: 0.05, is_percentage: false, description: 'Single-use bag fee', applies_to: 'Per paper/plastic bag provided', type: 'special' }
+                ],
+                'bexar': [
+                    { name: 'Bexar County Tax', rate: 0.75, is_percentage: true, description: 'County-level sales tax', applies_to: 'All taxable sales', type: 'county' },
+                    { name: 'San Antonio MTA', rate: 0.50, is_percentage: true, description: 'Metropolitan Transit Authority tax', applies_to: 'All taxable sales', type: 'special' }
+                ],
+                'tarrant': [
+                    { name: 'Tarrant County Tax', rate: 0.50, is_percentage: true, description: 'County-level sales tax', applies_to: 'All taxable sales', type: 'county' },
+                    { name: 'Fort Worth MTA', rate: 0.50, is_percentage: true, description: 'Metropolitan Transit Authority tax', applies_to: 'All taxable sales', type: 'special' }
+                ]
+            };
+
+            const cityTaxes = {
+                'austin': [{ name: 'Austin City Tax', rate: 2.00, is_percentage: true, description: 'City sales tax', applies_to: 'All taxable sales', type: 'local' }],
+                'houston': [{ name: 'Houston City Tax', rate: 2.00, is_percentage: true, description: 'City sales tax', applies_to: 'All taxable sales', type: 'local' }],
+                'dallas': [{ name: 'Dallas City Tax', rate: 2.00, is_percentage: true, description: 'City sales tax', applies_to: 'All taxable sales', type: 'local' }],
+                'san-antonio': [{ name: 'San Antonio City Tax', rate: 2.00, is_percentage: true, description: 'City sales tax', applies_to: 'All taxable sales', type: 'local' }],
+                'fort-worth': [{ name: 'Fort Worth City Tax', rate: 2.00, is_percentage: true, description: 'City sales tax', applies_to: 'All taxable sales', type: 'local' }]
+            };
+
+            let allTaxes = [...baseTaxes];
             
-            counties.forEach(county => {
-                const option = document.createElement('option');
-                option.value = county.slug;
-                option.textContent = county.name;
-                datalist.appendChild(option);
-            });
+            if (countyTaxes[county]) {
+                allTaxes = allTaxes.concat(countyTaxes[county]);
+            }
+            
+            if (cityTaxes[city]) {
+                allTaxes = allTaxes.concat(cityTaxes[city]);
+            }
+
+            const totalRate = allTaxes.filter(t => t.is_percentage).reduce((sum, tax) => sum + tax.rate, 0) / 100;
+
+            return {
+                taxes: allTaxes,
+                totalRate: totalRate
+            };
         }
 
-        // Load cities for selected county
-        async function loadCitiesForCounty(countySlug) {
-            const county = counties.find(c => c.slug === countySlug);
-            if (!county) return;
+        // Override the existing functions to use static data
+        function scanTaxes() {
+            const county = document.getElementById('county').value;
+            const city = document.getElementById('city').value;
+            const zip = document.getElementById('zip').value;
 
-            try {
-                const response = await fetch(`/api/counties/${county.id}/cities`);
-                const cities = await response.json();
-                populateCityDropdown(cities);
-            } catch (error) {
-                console.error('Error loading cities:', error);
-                showStatus('Error loading cities from database', 'error');
+            if (!county) {
+                showStatus('Please select a county', 'error');
+                return;
             }
+
+            showLoading(true);
+            
+            setTimeout(() => {
+                const taxData = generateTaxData(county, city, zip);
+                currentTaxData = {
+                    location: { county, city, zip },
+                    taxes: taxData.taxes,
+                    totalRate: taxData.totalRate,
+                    scanDate: new Date().toISOString()
+                };
+                displayTaxes(currentTaxData);
+                showLoading(false);
+                showStatus('Tax scan completed successfully!', 'success');
+            }, 2000);
         }
 
         // Populate city dropdown
@@ -394,67 +588,14 @@
             
             cities.forEach(city => {
                 const option = document.createElement('option');
-                option.value = city.slug;
-                option.textContent = city.name;
+                option.value = city.toLowerCase().replace(/\s+/g, '-');
+                option.textContent = city;
                 datalist.appendChild(option);
             });
         }
 
-        // Override the existing scanTaxes function to use database
-        async function scanTaxes() {
-            const countySlug = document.getElementById('county').value;
-            const citySlug = document.getElementById('city').value;
-            const zip = document.getElementById('zip').value;
-
-            if (!countySlug) {
-                showStatus('Please select a county', 'error');
-                return;
-            }
-
-            showLoading(true);
-            
-            try {
-                const county = counties.find(c => c.slug === countySlug);
-                if (!county) {
-                    throw new Error('County not found');
-                }
-
-                let cityId = null;
-                if (citySlug) {
-                    const response = await fetch(`/api/counties/${county.id}/cities`);
-                    const cities = await response.json();
-                    const city = cities.find(c => c.slug === citySlug);
-                    if (city) {
-                        cityId = city.id;
-                    }
-                }
-
-                // Get tax data from database
-                const taxResponse = await fetch(`/api/taxes/${county.id}${cityId ? '/' + cityId : ''}`);
-                const taxData = await taxResponse.json();
-
-                currentTaxData = {
-                    location: { county: countySlug, city: citySlug, zip },
-                    taxes: taxData.taxes,
-                    totalRate: taxData.totalRate,
-                    scanDate: new Date().toISOString()
-                };
-
-                displayTaxes(currentTaxData);
-                showStatus('Tax scan completed successfully!', 'success');
-            } catch (error) {
-                console.error('Error scanning taxes:', error);
-                showStatus('Error scanning taxes. Please try again.', 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
         // Update the county input handler
         document.addEventListener('DOMContentLoaded', function() {
-            // Load counties when page loads
-            loadCountiesFromDB();
-
             const countyInput = document.getElementById('county');
             const cityInput = document.getElementById('city');
             
@@ -466,8 +607,8 @@
                 cityInput.value = '';
                 
                 // Load cities for selected county
-                if (countySlug) {
-                    loadCitiesForCounty(countySlug);
+                if (countySlug && countyToCities[countySlug]) {
+                    populateCityDropdown(countyToCities[countySlug]);
                 }
             });
             
@@ -478,7 +619,64 @@
             });
         });
 
-        // Update displayTaxes function to handle database format
+        // Export functions
+        function exportJSON() {
+            if (!currentTaxData) {
+                showStatus('Please scan taxes first', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(currentTaxData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'texas-restaurant-taxes-' + Date.now() + '.json';
+            link.click();
+            URL.revokeObjectURL(url);
+            showStatus('Tax data exported successfully!', 'success');
+        }
+
+        function exportCSV() {
+            if (!currentTaxData) {
+                showStatus('Please scan taxes first', 'error');
+                return;
+            }
+            
+            let csv = 'Tax Name,Rate,Description,Applies To,Type\n';
+            currentTaxData.taxes.forEach(tax => {
+                const rate = tax.is_percentage ? tax.rate + '%' : '$' + tax.rate;
+                csv += '"' + tax.name + '","' + rate + '","' + tax.description + '","' + tax.applies_to + '","' + tax.type + '"\n';
+            });
+            
+            const dataBlob = new Blob([csv], {type: 'text/csv'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'texas-restaurant-taxes-' + Date.now() + '.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+            showStatus('Tax data exported successfully!', 'success');
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="status-message status-' + type + '">' + message + '</div>';
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // Display taxes function
         function displayTaxes(taxData) {
             const taxGrid = document.getElementById('taxGrid');
             taxGrid.innerHTML = '';
