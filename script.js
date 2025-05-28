@@ -312,8 +312,6 @@ async function scanTaxes() {
     const city = document.getElementById('city').value;
     const zip = document.getElementById('zip').value;
 
-    console.log('DEBUG: scanTaxes called with:', { countyDisplay, county, city, zip });
-
     if (!county) {
         showStatus('Please select a county', 'error');
         return;
@@ -324,14 +322,11 @@ async function scanTaxes() {
     try {
         // Try to use the API server first
         const apiUrl = `http://localhost:3001/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}`;
-        console.log('DEBUG: Calling API:', apiUrl);
         
         const response = await fetch(apiUrl);
-        console.log('DEBUG: API response status:', response.status, response.ok);
         
         if (response.ok) {
             const apiData = await response.json();
-            console.log('DEBUG: API data received:', apiData);
             
             if (apiData && apiData.total_rate) {
                 // Transform API data to match our frontend format
@@ -393,9 +388,6 @@ async function scanTaxes() {
                     });
                 }
                 
-                console.log('DEBUG: Transformed taxes:', taxes);
-                console.log('DEBUG: Total rate from API:', apiData.total_rate);
-                
                 currentTaxData = {
                     location: { county: countyDisplay, city, zip },
                     taxes: taxes,
@@ -411,7 +403,7 @@ async function scanTaxes() {
         }
         
         // Fallback to static data if API is not available
-        console.warn('DEBUG: API not available, falling back to static data');
+        console.warn('API not available, falling back to static data');
         const taxData = generateTaxData(county, city, zip);
         currentTaxData = {
             location: { county: countyDisplay, city, zip },
@@ -425,7 +417,7 @@ async function scanTaxes() {
         showStatus('⚠️ Using limited static data. Start API server for complete data.', 'warning');
         
     } catch (error) {
-        console.error('DEBUG: Error fetching tax data:', error);
+        console.error('Error fetching tax data:', error);
         
         // Fallback to static data
         const taxData = generateTaxData(county, city, zip);
