@@ -123,7 +123,7 @@ body {
 .btn-location {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    display: none; /* Initially hidden until Google Maps loads */
+    display: inline-block; /* Show by default instead of hidden */
     position: relative;
 }
 

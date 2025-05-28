@@ -92,17 +92,7 @@ function loadGoogleMapsAPI() {
     const apiKey = window.CONFIG?.GOOGLE_MAPS_API_KEY;
     
     if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-        console.warn('Google Maps API key not configured. Location services will be disabled.');
-        // Show the location button in disabled state
-        const locationBtn = document.querySelector('.btn-location');
-        if (locationBtn) {
-            locationBtn.style.display = 'inline-block';
-            locationBtn.classList.add('disabled');
-            locationBtn.title = 'Location services unavailable - Google Maps API key not configured';
-            locationBtn.onclick = function() {
-                showStatus('❌ Location services are not configured. Please enter your location manually.', 'error');
-            };
-        }
+        console.warn('Google Maps API key not configured. Location services will work with basic coordinates only.');
         return;
     }
 
@@ -118,18 +108,7 @@ function loadGoogleMapsAPI() {
     
     // Add error handling for script loading
     script.onerror = function() {
-        console.error('Failed to load Google Maps API');
-        showStatus('❌ Location services unavailable. Please enter location manually.', 'error');
-        // Show the location button in disabled state
-        const locationBtn = document.querySelector('.btn-location');
-        if (locationBtn) {
-            locationBtn.style.display = 'inline-block';
-            locationBtn.classList.add('disabled');
-            locationBtn.title = 'Location services unavailable - Failed to load Google Maps API';
-            locationBtn.onclick = function() {
-                showStatus('❌ Location services failed to load. Please enter your location manually.', 'error');
-            };
-        }
+        console.error('Failed to load Google Maps API - location services will work with basic coordinates only');
     };
     
     document.head.appendChild(script);
@@ -139,29 +118,10 @@ function loadGoogleMapsAPI() {
 function initGoogleMaps() {
     try {
         window.geocoder = new google.maps.Geocoder();
-        console.log('Google Maps API loaded successfully');
-        
-        // Show and enable the location button now that Maps is ready
-        const locationBtn = document.querySelector('.btn-location');
-        if (locationBtn) {
-            locationBtn.style.display = 'inline-block';
-            locationBtn.classList.remove('disabled');
-            locationBtn.title = 'Uses your device\'s location to automatically fill in county and city';
-        }
+        console.log('Google Maps API loaded successfully - enhanced location services available');
     } catch (error) {
         console.error('Error initializing Google Maps:', error);
-        showStatus('❌ Location services initialization failed.', 'error');
-        
-        // Show the button but in disabled state
-        const locationBtn = document.querySelector('.btn-location');
-        if (locationBtn) {
-            locationBtn.style.display = 'inline-block';
-            locationBtn.classList.add('disabled');
-            locationBtn.title = 'Location services unavailable - Google Maps API failed to load';
-            locationBtn.onclick = function() {
-                showStatus('❌ Location services are currently unavailable. Please enter your location manually.', 'error');
-            };
-        }
+        console.log('Location services will work with basic coordinates only');
     }
 }
 
@@ -179,9 +139,52 @@ function useLocation() {
         return;
     }
 
-    // Check if Google Maps geocoder is available
+    // If Google Maps geocoder is not available, use a simpler approach
     if (!window.geocoder) {
-        showStatus('❌ Location services not available. Google Maps API may not be loaded. Please enter location manually.', 'error');
+        showStatus('🌍 Getting your location... (Google Maps not available, using basic location)', 'success');
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                showStatus(`📍 Location found: ${lat.toFixed(4)}, ${lng.toFixed(4)}. Please enter your county and city manually.`, 'warning');
+                
+                // Focus on the county input to help user
+                const countyInput = document.getElementById('county');
+                if (countyInput) {
+                    countyInput.focus();
+                }
+            },
+            function(error) {
+                let errorMsg = '❌ Unable to get your location. ';
+                let suggestion = ' Please enter your location manually using the form below.';
+                
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg += 'Location access was denied.';
+                        suggestion = ' To use location services, please allow location access in your browser settings and try again.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg += 'Location information is unavailable.';
+                        suggestion = ' Please check your device\'s location settings and try again, or enter your location manually.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg += 'Location request timed out.';
+                        suggestion = ' Please try again or enter your location manually.';
+                        break;
+                    default:
+                        errorMsg += 'An unknown error occurred.';
+                        break;
+                }
+                showStatus(errorMsg + suggestion, 'error');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 300000
+            }
+        );
         return;
     }
 
