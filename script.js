@@ -599,11 +599,16 @@ function showStatus(message, type) {
 
 // Load data freshness information
 async function loadDataFreshness() {
+    console.log('📊 loadDataFreshness function called');
+    
     try {
         // Call the actual API endpoint with strong cache busting
         const cacheBuster = Date.now() + Math.random();
-        console.log('Loading data freshness with cache buster:', cacheBuster);
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/tax-data/freshness?_=${cacheBuster}`, {
+        const apiUrl = `${CONFIG.API_BASE_URL}/api/tax-data/freshness?_=${cacheBuster}`;
+        console.log('🌐 Loading data freshness from:', apiUrl);
+        console.log('🔄 Cache buster value:', cacheBuster);
+        
+        const response = await fetch(apiUrl, {
             cache: 'no-cache',
             headers: {
                 'Cache-Control': 'no-cache',
@@ -611,18 +616,28 @@ async function loadDataFreshness() {
             }
         });
         
+        console.log('📡 Freshness API response status:', response.status);
+        console.log('📡 Freshness API response ok:', response.ok);
+        
         if (response.ok) {
             const data = await response.json();
-            console.log('Data freshness API response:', data);
+            console.log('📊 Data freshness API response:', data);
             updateDataFreshnessUI(data);
+            console.log('✅ Data freshness UI updated successfully');
         } else {
-            console.error('Failed to load data freshness:', response.status);
+            console.error('❌ Failed to load data freshness. Status:', response.status);
             showDataError();
         }
     } catch (error) {
-        console.error('Error loading data freshness:', error);
+        console.error('❌ Error loading data freshness:', error);
+        console.error('❌ Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
         
         // Fallback to mock data if API is not available
+        console.log('🔄 Falling back to mock data...');
         const mockDataFreshness = {
             source_date: '2025-05-01',
             imported_date: '2025-05-28',
@@ -632,11 +647,14 @@ async function loadDataFreshness() {
         };
         
         updateDataFreshnessUI(mockDataFreshness);
+        console.log('✅ Mock data freshness UI updated');
     }
 }
 
 // Update the data freshness UI
 function updateDataFreshnessUI(data) {
+    console.log('🎨 updateDataFreshnessUI called with data:', data);
+    
     const sourceDate = document.getElementById('sourceDate');
     const lastUpdated = document.getElementById('lastUpdated');
     const lastChecked = document.getElementById('lastChecked');
@@ -644,38 +662,56 @@ function updateDataFreshnessUI(data) {
     const updateFrequency = document.getElementById('updateFrequency');
     const freshnessIndicator = document.getElementById('freshnessIndicator');
     
+    console.log('🔍 DOM elements found:', {
+        sourceDate: !!sourceDate,
+        lastUpdated: !!lastUpdated,
+        lastChecked: !!lastChecked,
+        dataVersion: !!dataVersion,
+        updateFrequency: !!updateFrequency,
+        freshnessIndicator: !!freshnessIndicator
+    });
+    
     // Handle source date
     if (sourceDate) {
-        sourceDate.textContent = data.source_date ? formatDate(data.source_date) : 'Unknown';
+        const formattedSourceDate = data.source_date ? formatDate(data.source_date) : 'Unknown';
+        sourceDate.textContent = formattedSourceDate;
+        console.log('📅 Source date updated:', formattedSourceDate);
     }
     
     // Handle last updated
     if (lastUpdated) {
-        lastUpdated.textContent = data.imported_date ? formatDate(data.imported_date) : 'Unknown';
+        const formattedLastUpdated = data.imported_date ? formatDate(data.imported_date) : 'Unknown';
+        lastUpdated.textContent = formattedLastUpdated;
+        console.log('📅 Last updated field updated:', formattedLastUpdated);
     }
     
     // Handle last checked
     if (lastChecked) {
         if (data.last_checked) {
             const formattedTime = formatDateTime(data.last_checked);
-            console.log('Updating Last Checked field:', data.last_checked, '->', formattedTime);
+            console.log('⏰ Updating Last Checked field:', data.last_checked, '->', formattedTime);
             lastChecked.textContent = formattedTime;
+            console.log('✅ Last Checked field updated successfully to:', formattedTime);
         } else {
-            console.log('No last_checked data available, setting to Never');
+            console.log('⚠️ No last_checked data available, setting to Never');
             lastChecked.textContent = 'Never';
         }
     } else {
-        console.error('lastChecked element not found in DOM');
+        console.error('❌ lastChecked element not found in DOM');
     }
     
     // Handle data version
     if (dataVersion) {
-        dataVersion.textContent = data.version_number || 'Unknown';
+        const versionText = data.version_number || 'Unknown';
+        dataVersion.textContent = versionText;
+        console.log('🏷️ Data version updated:', versionText);
     }
     
     // Handle update frequency
     if (updateFrequency) {
-        updateFrequency.textContent = capitalizeFirst(data.update_frequency || 'quarterly');
+        const frequencyText = capitalizeFirst(data.update_frequency || 'quarterly');
+        updateFrequency.textContent = frequencyText;
+        console.log('🔄 Update frequency updated:', frequencyText);
     }
     
     // Determine freshness status
@@ -712,8 +748,13 @@ function updateDataFreshnessUI(data) {
     if (freshnessIndicator) {
         freshnessIndicator.className = `freshness-indicator ${status}`;
         const statusTextElement = freshnessIndicator.querySelector('.status-text');
-        if (statusTextElement) statusTextElement.textContent = statusText;
+        if (statusTextElement) {
+            statusTextElement.textContent = statusText;
+            console.log('🚦 Freshness indicator updated:', status, statusText);
+        }
     }
+    
+    console.log('✅ updateDataFreshnessUI completed successfully');
 }
 
 // Show data error state
@@ -728,33 +769,52 @@ function showDataError() {
 
 // Update the refreshTaxData function to use the official source
 async function refreshTaxData() {
+    console.log('🔄 refreshTaxData function called');
+    
     const refreshBtn = document.getElementById('refreshTaxData');
     if (!refreshBtn) {
-        console.error('Refresh button not found');
+        console.error('❌ Refresh button not found in DOM');
+        alert('Error: Refresh button not found. Please refresh the page and try again.');
         return;
     }
     
+    console.log('✅ Refresh button found:', refreshBtn);
+    
     const originalText = refreshBtn.innerHTML;
+    console.log('📝 Original button text:', originalText);
     
     try {
+        console.log('🔄 Starting refresh process...');
         refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/tax-data/update-official`, {
+        const apiUrl = `${CONFIG.API_BASE_URL}/api/tax-data/update-official`;
+        console.log('🌐 Making API call to:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
         
+        console.log('📡 API response status:', response.status);
+        console.log('📡 API response ok:', response.ok);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
-        console.log('Refresh API response:', result);
+        console.log('📊 Refresh API response:', result);
         
         if (result.success) {
             if (result.details && result.details.message === 'Data already exists') {
                 showStatus('✅ Tax data is up to date. No new updates available.', 'success');
+                console.log('✅ Data already up to date');
             } else {
                 showStatus('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
+                console.log('✅ Data updated successfully');
                 
                 // Show detailed results if available
                 if (result.details) {
@@ -769,29 +829,45 @@ async function refreshTaxData() {
             }
             
             // Force multiple refresh attempts to ensure the UI updates
-            console.log('Starting data freshness refresh...');
+            console.log('🔄 Starting data freshness refresh...');
             
             // First refresh after 1 second
             setTimeout(async () => {
-                console.log('First refresh attempt...');
+                console.log('🔄 First refresh attempt...');
                 await loadDataFreshness();
             }, 1000);
             
             // Second refresh after 2.5 seconds to ensure database is fully updated
             setTimeout(async () => {
-                console.log('Second refresh attempt...');
+                console.log('🔄 Second refresh attempt...');
                 await loadDataFreshness();
             }, 2500);
             
         } else {
+            console.error('❌ API returned success=false:', result.message);
             showStatus(`❌ Update failed: ${result.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
-        console.error('Error updating tax data:', error);
-        showStatus('❌ Error updating tax data. Please check API server connection.', 'error');
+        console.error('❌ Error updating tax data:', error);
+        console.error('❌ Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        // Check if it's a network error
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            showStatus('❌ Network error: Cannot connect to API server. Please check if the server is running.', 'error');
+        } else if (error.message.includes('HTTP error')) {
+            showStatus(`❌ Server error: ${error.message}`, 'error');
+        } else {
+            showStatus('❌ Error updating tax data. Please check API server connection.', 'error');
+        }
     } finally {
+        console.log('🔄 Restoring button state...');
         refreshBtn.innerHTML = originalText;
         refreshBtn.disabled = false;
+        console.log('✅ Button state restored');
     }
 }
 
