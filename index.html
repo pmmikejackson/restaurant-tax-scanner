@@ -22,27 +22,31 @@
                 <div class="location-inputs">
                     <div class="input-group">
                         <label for="county">County</label>
-                        <input type="text" id="county" list="county-list" placeholder="Type or select county..." autocomplete="off">
-                        <datalist id="county-list">
-                            <option value="harris">Harris County</option>
-                            <option value="dallas">Dallas County</option>
-                            <option value="tarrant">Tarrant County</option>
-                            <option value="bexar">Bexar County</option>
-                            <option value="travis">Travis County</option>
-                            <option value="collin">Collin County</option>
-                            <option value="fort-bend">Fort Bend County</option>
-                            <option value="denton">Denton County</option>
-                            <option value="williamson">Williamson County</option>
-                            <option value="montgomery">Montgomery County</option>
-                        </datalist>
+                        <div class="select-wrapper">
+                            <input type="text" id="county" list="county-list" placeholder="Type or select county..." autocomplete="off" class="searchable-input">
+                            <datalist id="county-list">
+                                <option value="BEXAR COUNTY">BEXAR COUNTY</option>
+                                <option value="COLLIN COUNTY">COLLIN COUNTY</option>
+                                <option value="DALLAS COUNTY">DALLAS COUNTY</option>
+                                <option value="DENTON COUNTY">DENTON COUNTY</option>
+                                <option value="FORT BEND COUNTY">FORT BEND COUNTY</option>
+                                <option value="HARRIS COUNTY">HARRIS COUNTY</option>
+                                <option value="MONTGOMERY COUNTY">MONTGOMERY COUNTY</option>
+                                <option value="TARRANT COUNTY">TARRANT COUNTY</option>
+                                <option value="TRAVIS COUNTY">TRAVIS COUNTY</option>
+                                <option value="WILLIAMSON COUNTY">WILLIAMSON COUNTY</option>
+                            </datalist>
+                        </div>
                     </div>
 
                     <div class="input-group">
                         <label for="city">City</label>
-                        <input type="text" id="city" list="city-list" placeholder="Type or select city..." autocomplete="off">
-                        <datalist id="city-list">
-                            <!-- Cities will be populated dynamically -->
-                        </datalist>
+                        <div class="select-wrapper">
+                            <input type="text" id="city" list="city-list" placeholder="Select county first..." autocomplete="off" class="searchable-input">
+                            <datalist id="city-list">
+                                <!-- Cities will be populated dynamically -->
+                            </datalist>
+                        </div>
                     </div>
 
                     <div class="input-group">
@@ -75,12 +79,75 @@
                 <div class="export-section">
                     <h3>Export Tax Configuration</h3>
                     <p style="margin: 15px 0; color: #7f8c8d;">Download tax rates in your preferred format for POS configuration</p>
-                    <button class="btn btn-export" onclick="exportJSON()">Export as JSON</button>
-                    <button class="btn btn-export" onclick="exportCSV()">Export as CSV</button>
+                    <div class="export-buttons">
+                        <button class="btn btn-export btn-json" onclick="exportJSON()">
+                            Export as JSON
+                            <span class="icon">📄</span>
+                        </button>
+                        <button class="btn btn-export btn-csv" onclick="exportCSV()">
+                            Export as CSV
+                            <span class="icon">📊</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-management-section">
+                <h2 class="section-title">🔄 Tax Data Management</h2>
+                
+                <div class="data-info-card">
+                    <div class="data-info-header">
+                        <h3>Data Freshness</h3>
+                        <div class="freshness-indicator" id="freshnessIndicator">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="data-info-content">
+                        <div class="info-row">
+                            <span class="label">Source Data Published:</span>
+                            <span class="value" id="sourceDate">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Last Updated:</span>
+                            <span class="value" id="lastUpdated">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Data Version:</span>
+                            <span class="value" id="dataVersion">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Update Frequency:</span>
+                            <span class="value" id="updateFrequency">Quarterly</span>
+                        </div>
+                    </div>
+                    
+                    <div class="data-actions">
+                        <button class="btn btn-refresh" onclick="refreshTaxData()">
+                            🔄 Refresh Tax Data
+                        </button>
+                        <button class="btn btn-history" onclick="showUpdateHistory()">
+                            📋 Update History
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div id="statusMessage"></div>
+        </div>
+    </div>
+
+    <!-- Update History Modal -->
+    <div id="updateHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📋 Update History</h2>
+                <span class="close" onclick="closeUpdateHistory()">&times;</span>
+            </div>
+            <div id="updateHistoryContent">
+                <p>Loading update history...</p>
+            </div>
         </div>
     </div>
 
