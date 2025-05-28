@@ -304,36 +304,61 @@ class TaxDataManager {
     // Get data freshness info
     async getDataFreshness(stateCode = 'TX') {
         return new Promise((resolve, reject) => {
-            const query = `
+            if (!this.db) {
+                reject(new Error('Database not connected'));
+                return;
+            }
+            
+            // First get data source info (simpler query)
+            const sourceQuery = `
                 SELECT 
-                    tdv.source_date,
-                    tdv.imported_date,
-                    ds.name as source_name,
-                    ds.update_frequency,
-                    ds.last_checked,
-                    CASE 
-                        WHEN ds.update_frequency = 'daily' THEN 1
-                        WHEN ds.update_frequency = 'weekly' THEN 7
-                        WHEN ds.update_frequency = 'monthly' THEN 30
-                        WHEN ds.update_frequency = 'quarterly' THEN 90
-                        ELSE 365
-                    END as update_frequency_days,
-                    julianday('now') - julianday(tdv.imported_date) as days_since_import
-                FROM tax_data_versions tdv
-                JOIN states s ON tdv.state_id = s.id
-                LEFT JOIN update_logs ul ON tdv.id = ul.version_id
-                LEFT JOIN data_sources ds ON ul.source_id = ds.id
-                WHERE s.code = ? AND tdv.is_active = 1
-                ORDER BY ul.started_at DESC
+                    name as source_name,
+                    update_frequency,
+                    last_checked
+                FROM data_sources 
+                WHERE name = 'Texas Comptroller Sales Tax Rates'
                 LIMIT 1
             `;
             
-            this.db.get(query, [stateCode], (err, row) => {
+            this.db.get(sourceQuery, [], (err, sourceRow) => {
                 if (err) {
                     reject(err);
-                } else {
-                    resolve(row);
+                    return;
                 }
+                
+                // Then get the latest active version info
+                const versionQuery = `
+                    SELECT 
+                        tdv.source_date,
+                        tdv.imported_date,
+                        tdv.version_number,
+                        julianday('now') - julianday(tdv.imported_date) as days_since_import
+                    FROM tax_data_versions tdv
+                    JOIN states s ON tdv.state_id = s.id
+                    WHERE s.code = ? AND tdv.is_active = 1
+                    ORDER BY tdv.imported_date DESC
+                    LIMIT 1
+                `;
+                
+                this.db.get(versionQuery, [stateCode], (err, versionRow) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    // Combine the results
+                    const result = {
+                        source_name: sourceRow ? sourceRow.source_name : 'Unknown',
+                        update_frequency: sourceRow ? sourceRow.update_frequency : 'quarterly',
+                        last_checked: sourceRow ? sourceRow.last_checked : null,
+                        source_date: versionRow ? versionRow.source_date : null,
+                        imported_date: versionRow ? versionRow.imported_date : null,
+                        version_number: versionRow ? versionRow.version_number : 'Unknown',
+                        days_since_import: versionRow ? versionRow.days_since_import : 0
+                    };
+                    
+                    resolve(result);
+                });
             });
         });
     }

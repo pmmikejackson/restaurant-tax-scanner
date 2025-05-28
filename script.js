@@ -564,13 +564,34 @@ function updateDataFreshnessUI(data) {
     const updateFrequency = document.getElementById('updateFrequency');
     const freshnessIndicator = document.getElementById('freshnessIndicator');
     
-    if (sourceDate) sourceDate.textContent = formatDate(data.source_date);
-    if (lastUpdated) lastUpdated.textContent = formatDate(data.imported_date);
-    if (lastChecked && data.last_checked) {
-        lastChecked.textContent = formatDateTime(data.last_checked);
+    // Handle source date
+    if (sourceDate) {
+        sourceDate.textContent = data.source_date ? formatDate(data.source_date) : 'Unknown';
     }
-    if (dataVersion) dataVersion.textContent = data.version_number || 'Unknown';
-    if (updateFrequency) updateFrequency.textContent = capitalizeFirst(data.update_frequency || 'quarterly');
+    
+    // Handle last updated
+    if (lastUpdated) {
+        lastUpdated.textContent = data.imported_date ? formatDate(data.imported_date) : 'Unknown';
+    }
+    
+    // Handle last checked
+    if (lastChecked) {
+        if (data.last_checked) {
+            lastChecked.textContent = formatDateTime(data.last_checked);
+        } else {
+            lastChecked.textContent = 'Never';
+        }
+    }
+    
+    // Handle data version
+    if (dataVersion) {
+        dataVersion.textContent = data.version_number || 'Unknown';
+    }
+    
+    // Handle update frequency
+    if (updateFrequency) {
+        updateFrequency.textContent = capitalizeFirst(data.update_frequency || 'quarterly');
+    }
     
     // Determine freshness status
     const daysSinceImport = data.days_since_import || 0;
