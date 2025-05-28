@@ -155,6 +155,13 @@ AUSTIN	Austin City	1.00	2020-01-01`;
             console.log('🏛️  Starting Texas Tax Rate Import from Official Source');
             console.log('====================================================');
 
+            // Check if we already have recent data
+            const existingCount = await this.getExistingTaxCount();
+            if (existingCount > 0) {
+                console.log(`📊 Found ${existingCount} existing tax records. Skipping import to prevent duplicates.`);
+                return { imported: 0, updated: 0, errors: 0, message: 'Data already exists' };
+            }
+
             // Download the data
             const rawData = await this.downloadTaxRateFile();
             
@@ -163,11 +170,14 @@ AUSTIN	Austin City	1.00	2020-01-01`;
             const rates = this.parseTaxRateData(rawData);
             console.log(`Found ${rates.length} tax rates`);
 
+            // Create a single version for this import
+            const importDate = new Date().toISOString();
+            const versionId = await this.createImportVersion(importDate);
+
             // Import the data
             let imported = 0;
             let updated = 0;
             let errors = 0;
-            const importDate = new Date().toISOString();
 
             for (const rate of rates) {
                 try {
@@ -177,8 +187,8 @@ AUSTIN	Austin City	1.00	2020-01-01`;
                     // Find or create tax authority
                     const authority = await this.findOrCreateTaxAuthority(rate, jurisdiction);
                     
-                    // Insert tax rate
-                    await this.insertTaxRate(rate, authority.id, importDate);
+                    // Insert tax rate with the shared version
+                    await this.insertTaxRateWithVersion(rate, authority.id, versionId, importDate);
                     
                     imported++;
                 } catch (error) {
@@ -201,6 +211,84 @@ AUSTIN	Austin City	1.00	2020-01-01`;
             console.error('❌ Import failed:', error.message);
             throw error;
         }
+    }
+
+    async getExistingTaxCount() {
+        return new Promise((resolve, reject) => {
+            this.db.get(
+                `SELECT COUNT(*) as count FROM taxes`,
+                (err, row) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(row.count);
+                    }
+                }
+            );
+        });
+    }
+
+    async createImportVersion(importDate) {
+        return new Promise((resolve, reject) => {
+            this.db.run(
+                `INSERT INTO tax_data_versions (version_number, state_id, source_url, imported_date, notes, is_active)
+                 VALUES (?, 1, 'Texas State Comptroller', ?, 'Imported from official source', TRUE)`,
+                [`${new Date().getFullYear()}.${Math.floor(Date.now() / 1000)}`, importDate],
+                function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(this.lastID);
+                    }
+                }
+            );
+        });
+    }
+
+    async insertTaxRateWithVersion(rate, authorityId, versionId, importDate) {
+        return new Promise((resolve, reject) => {
+            // Check if this tax already exists
+            this.db.get(
+                `SELECT id FROM taxes WHERE authority_id = ? AND name = ?`,
+                [authorityId, `${rate.jurisdiction_name} Sales Tax`],
+                (err, existing) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+
+                    if (existing) {
+                        // Tax already exists, skip
+                        resolve({ id: existing.id, skipped: true });
+                        return;
+                    }
+
+                    // Insert new tax rate
+                    this.db.run(
+                        `INSERT INTO taxes (
+                            version_id, authority_id, name, rate, is_percentage, 
+                            effective_date, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, TRUE, ?, ?, ?)`,
+                        [
+                            versionId,
+                            authorityId,
+                            `${rate.jurisdiction_name} Sales Tax`,
+                            rate.rate,
+                            rate.effective_date,
+                            importDate,
+                            importDate
+                        ],
+                        function(err) {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve({ id: this.lastID, versionId: versionId });
+                            }
+                        }
+                    );
+                }
+            );
+        });
     }
 
     async findOrCreateJurisdiction(rate) {
@@ -329,51 +417,6 @@ AUSTIN	Austin City	1.00	2020-01-01`;
                                     }
                                 }
                             );
-                        }
-                    );
-                }
-            );
-        });
-    }
-
-    async insertTaxRate(rate, authorityId, importDate) {
-        return new Promise((resolve, reject) => {
-            const db = this.db; // Capture db reference at the start
-            
-            // First, create or get a version
-            db.run(
-                `INSERT INTO tax_data_versions (version_number, state_id, source_url, imported_date, notes, is_active)
-                 VALUES (?, 1, 'Texas State Comptroller', ?, 'Imported from official source', TRUE)`,
-                [`${new Date().getFullYear()}.${Math.floor(Date.now() / 1000)}`, importDate],
-                function(err) {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-
-                    const versionId = this.lastID;
-
-                    // Insert new tax rate
-                    db.run(
-                        `INSERT INTO taxes (
-                            version_id, authority_id, name, rate, is_percentage, 
-                            effective_date, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, TRUE, ?, ?, ?)`,
-                        [
-                            versionId,
-                            authorityId,
-                            `${rate.jurisdiction_name} Sales Tax`,
-                            rate.rate, // Keep as percentage (8.25 for 8.25%)
-                            rate.effective_date,
-                            importDate,
-                            importDate
-                        ],
-                        function(err) {
-                            if (err) {
-                                reject(err);
-                            } else {
-                                resolve({ id: this.lastID, versionId: versionId });
-                            }
                         }
                     );
                 }
