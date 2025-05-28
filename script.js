@@ -528,8 +528,9 @@ function showStatus(message, type) {
 // Load data freshness information
 async function loadDataFreshness() {
     try {
-        // Call the actual API endpoint
-        const response = await fetch('http://localhost:3001/api/tax-data/freshness');
+        // Call the actual API endpoint with cache busting
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`http://localhost:3001/api/tax-data/freshness?_=${cacheBuster}`);
         
         if (response.ok) {
             const data = await response.json();
@@ -615,10 +616,18 @@ async function refreshTaxData() {
         refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        // Update the "Last Checked" timestamp immediately
+        // Update the "Last Checked" timestamp immediately with local time
         const lastCheckedElement = document.getElementById('lastChecked');
         if (lastCheckedElement) {
-            lastCheckedElement.textContent = formatDateTime(new Date().toISOString());
+            const now = new Date();
+            lastCheckedElement.textContent = now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
         }
         
         const response = await fetch('http://localhost:3001/api/tax-data/update-official', {
@@ -648,8 +657,10 @@ async function refreshTaxData() {
                 }
             }
             
-            // Refresh data freshness display
-            loadDataFreshness();
+            // Refresh data freshness display after a short delay to ensure database is updated
+            setTimeout(() => {
+                loadDataFreshness();
+            }, 500);
             
         } else {
             showStatus(`❌ Update failed: ${result.message || 'Unknown error'}`, 'error');
@@ -882,14 +893,31 @@ function formatDate(dateString) {
 
 function formatDateTime(dateString) {
     if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    
+    try {
+        // Handle different date formats
+        let date;
+        if (dateString.includes('T') || dateString.includes('Z')) {
+            // ISO format (from API)
+            date = new Date(dateString);
+        } else {
+            // Local format (from database)
+            date = new Date(dateString);
+        }
+        
+        // Return in local time format
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Invalid date';
+    }
 }
 
 function capitalizeFirst(str) {

@@ -386,18 +386,31 @@ class TaxDataManager {
                 return;
             }
             
+            // Get current local time
+            const now = new Date();
+            const localTime = now.toLocaleString('en-US', {
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).replace(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+            
             const query = `
                 UPDATE data_sources 
-                SET last_checked = datetime('now')
+                SET last_checked = ?
                 WHERE name = 'Texas Comptroller Sales Tax Rates'
             `;
             
-            this.db.run(query, (err) => {
+            this.db.run(query, [localTime], (err) => {
                 if (err) {
                     console.warn('Could not update last_checked timestamp:', err.message);
                     resolve(); // Don't fail the whole operation for this
                 } else {
-                    console.log('Updated last_checked timestamp');
+                    console.log('Updated last_checked timestamp to:', localTime);
                     resolve();
                 }
             });
