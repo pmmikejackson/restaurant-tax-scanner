@@ -549,12 +549,16 @@ async function loadDataFreshness() {
 function updateDataFreshnessUI(data) {
     const sourceDate = document.getElementById('sourceDate');
     const lastUpdated = document.getElementById('lastUpdated');
+    const lastChecked = document.getElementById('lastChecked');
     const dataVersion = document.getElementById('dataVersion');
     const updateFrequency = document.getElementById('updateFrequency');
     const freshnessIndicator = document.getElementById('freshnessIndicator');
     
     if (sourceDate) sourceDate.textContent = formatDate(data.source_date);
     if (lastUpdated) lastUpdated.textContent = formatDate(data.imported_date);
+    if (lastChecked && data.last_checked) {
+        lastChecked.textContent = formatDateTime(data.last_checked);
+    }
     if (dataVersion) dataVersion.textContent = data.version_number || 'Unknown';
     if (updateFrequency) updateFrequency.textContent = capitalizeFirst(data.update_frequency || 'quarterly');
     
@@ -602,6 +606,12 @@ async function refreshTaxData() {
         refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
+        // Update the "Last Checked" timestamp immediately
+        const lastCheckedElement = document.getElementById('lastChecked');
+        if (lastCheckedElement) {
+            lastCheckedElement.textContent = formatDateTime(new Date().toISOString());
+        }
+        
         const response = await fetch('http://localhost:3001/api/tax-data/update-official', {
             method: 'POST',
             headers: {
@@ -612,17 +622,21 @@ async function refreshTaxData() {
         const result = await response.json();
         
         if (result.success) {
-            showStatus('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
-            
-            // Show detailed results if available
-            if (result.details) {
-                const details = result.details;
-                setTimeout(() => {
-                    showStatus(
-                        `📊 Import Results: ${details.imported || 0} imported, ${details.updated || 0} updated, ${details.errors || 0} errors`,
-                        'success'
-                    );
-                }, 2000);
+            if (result.details && result.details.message === 'Data already exists') {
+                showStatus('✅ Tax data is up to date. No new updates available.', 'success');
+            } else {
+                showStatus('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
+                
+                // Show detailed results if available
+                if (result.details) {
+                    const details = result.details;
+                    setTimeout(() => {
+                        showStatus(
+                            `📊 Import Results: ${details.imported || 0} imported, ${details.updated || 0} updated, ${details.errors || 0} errors`,
+                            'success'
+                        );
+                    }, 2000);
+                }
             }
             
             // Refresh data freshness display

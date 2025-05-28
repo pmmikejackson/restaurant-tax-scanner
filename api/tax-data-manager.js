@@ -346,6 +346,10 @@ class TaxDataManager {
         
         try {
             console.log('Starting official Texas tax data update...');
+            
+            // Always update the last_checked timestamp
+            await this.updateLastChecked();
+            
             const result = await importer.updateTaxRates();
             
             // Note: Data freshness is tracked automatically by the importer
@@ -353,16 +357,51 @@ class TaxDataManager {
             return {
                 success: true,
                 message: 'Tax data updated from official source',
-                details: result
+                details: result,
+                last_checked: new Date().toISOString()
             };
         } catch (error) {
             console.error('Error updating from official source:', error);
+            
+            // Still update last_checked even if there was an error
+            await this.updateLastChecked();
+            
             return {
                 success: false,
                 message: 'Failed to update from official source',
-                error: error.message
+                error: error.message,
+                last_checked: new Date().toISOString()
             };
         }
+    }
+
+    /**
+     * Update the last_checked timestamp for the Texas State Comptroller source
+     */
+    async updateLastChecked() {
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                // If no database connection, just resolve
+                resolve();
+                return;
+            }
+            
+            const query = `
+                UPDATE data_sources 
+                SET last_checked = datetime('now')
+                WHERE name = 'Texas Comptroller Sales Tax Rates'
+            `;
+            
+            this.db.run(query, (err) => {
+                if (err) {
+                    console.warn('Could not update last_checked timestamp:', err.message);
+                    resolve(); // Don't fail the whole operation for this
+                } else {
+                    console.log('Updated last_checked timestamp');
+                    resolve();
+                }
+            });
+        });
     }
 
     /**

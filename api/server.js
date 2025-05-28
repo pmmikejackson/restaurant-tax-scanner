@@ -26,6 +26,13 @@ app.use((req, res, next) => {
 // Initialize tax data manager
 const taxManager = new TaxDataManager();
 
+// Connect to database
+taxManager.connect().then(() => {
+    console.log('Connected to tax database');
+}).catch(err => {
+    console.error('Failed to connect to tax database:', err);
+});
+
 // API Routes
 
 // Get comprehensive tax rate for a location
