@@ -255,8 +255,11 @@ async function reverseGeocode(lat, lng) {
 
             const data = await response.json();
             
+            console.log('📡 Netlify geocoding response:', data);
+            
             if (data.results && data.results.length > 0) {
                 console.log('✅ Geocoding successful via Netlify function');
+                console.log('📋 Geocoding results:', JSON.stringify(data.results[0], null, 2));
                 parseGeocodingResults(data.results);
             } else {
                 throw new Error('No geocoding results found');
@@ -272,6 +275,7 @@ async function reverseGeocode(lat, lng) {
             window.geocoder.geocode({ location: latlng }, function(results, status) {
                 if (status === 'OK' && results[0]) {
                     console.log('✅ Geocoding successful via Google Maps API');
+                    console.log('📋 Google Maps geocoding results:', JSON.stringify(results[0], null, 2));
                     parseGeocodingResults(results);
                 } else {
                     console.error('❌ Google Maps geocoding failed:', status);
@@ -287,7 +291,10 @@ async function reverseGeocode(lat, lng) {
 
 // Parse geocoding results and populate form
 function parseGeocodingResults(results) {
+    console.log('🔍 parseGeocodingResults called with:', results);
+    
     if (!results || results.length === 0) {
+        console.error('❌ No geocoding results provided');
         showStatus('❌ No location data found. Please enter manually.', 'error');
         return;
     }
@@ -295,52 +302,110 @@ function parseGeocodingResults(results) {
     let county = null;
     let city = null;
     let zip = null;
+    let state = null;
 
-    // Extract location components
-    for (const result of results) {
+    console.log('🔍 Processing geocoding results...');
+    
+    // Extract location components from the first result
+    const result = results[0];
+    console.log('🔍 Main result:', result);
+    
+    if (result && result.address_components) {
+        console.log('🔍 Address components:', result.address_components);
+        
         for (const component of result.address_components) {
             const types = component.types;
+            console.log('🔍 Component:', component.long_name, 'Types:', types);
             
             if (types.includes('administrative_area_level_2')) {
                 // This is the county
-                let countyName = component.long_name.toLowerCase();
-                // Remove "County" from the end if present
-                countyName = countyName.replace(/\s+county$/i, '');
-                // Convert to slug format
-                county = countyName.replace(/\s+/g, '-');
+                county = component.long_name;
+                console.log('📍 Found county:', county);
             }
             
-            if (types.includes('locality') || types.includes('sublocality')) {
+            if (types.includes('locality')) {
                 city = component.long_name;
+                console.log('📍 Found city (locality):', city);
+            } else if (types.includes('sublocality_level_1') && !city) {
+                city = component.long_name;
+                console.log('📍 Found city (sublocality):', city);
             }
             
             if (types.includes('postal_code')) {
                 zip = component.long_name;
+                console.log('📍 Found ZIP:', zip);
+            }
+            
+            if (types.includes('administrative_area_level_1')) {
+                state = component.short_name;
+                console.log('📍 Found state:', state);
             }
         }
     }
 
+    // Verify we're in Texas
+    if (state && state !== 'TX') {
+        console.warn('⚠️ Location is not in Texas:', state);
+        showStatus(`⚠️ Location detected outside Texas (${state}). This tool is for Texas only.`, 'warning');
+        return;
+    }
+
+    console.log('📋 Extracted data:', { county, city, zip, state });
+
     // Populate form fields
+    let updated = false;
+    
     if (county) {
-        const countyDisplay = countyNameMapping[county] || county.toUpperCase() + ' COUNTY';
+        // Make sure county name is in the correct format (e.g., "HARRIS COUNTY")
+        let countyDisplay = county.toUpperCase();
+        if (!countyDisplay.includes('COUNTY')) {
+            countyDisplay += ' COUNTY';
+        }
+        
+        console.log('📝 Setting county to:', countyDisplay);
         document.getElementById('county').value = countyDisplay;
+        
         // Trigger county change to populate cities
-        document.getElementById('county').dispatchEvent(new Event('input'));
+        const countyInput = document.getElementById('county');
+        countyInput.dispatchEvent(new Event('input', { bubbles: true }));
+        console.log('✅ County input event dispatched');
+        updated = true;
     }
     
     if (city) {
+        // Wait a bit for the city list to populate, then set the city
         setTimeout(() => {
-            document.getElementById('city').value = city.toUpperCase();
-        }, 100);
+            const cityUpper = city.toUpperCase();
+            console.log('📝 Setting city to:', cityUpper);
+            document.getElementById('city').value = cityUpper;
+            console.log('✅ City field updated');
+        }, 200);
+        updated = true;
     }
     
     if (zip) {
+        console.log('📝 Setting ZIP to:', zip);
         document.getElementById('zip').value = zip;
+        console.log('✅ ZIP field updated');
+        updated = true;
     }
 
     // Show success message
-    const cityDisplay = city || '';
-    showStatus(`📍 Location found: ${cityDisplay}${cityDisplay ? ', ' : ''}${countyNameMapping[county] || county.toUpperCase() + ' COUNTY'}`, 'success');
+    if (updated) {
+        const locationParts = [];
+        if (city) locationParts.push(city);
+        if (county) {
+            const countyName = county.replace(/\s+county$/i, '');
+            locationParts.push(countyName + ' County');
+        }
+        
+        const locationText = locationParts.length > 0 ? locationParts.join(', ') : 'Location';
+        showStatus(`📍 ${locationText} detected and form updated!`, 'success');
+        console.log('✅ Form population completed successfully');
+    } else {
+        console.warn('⚠️ No location data could be extracted from geocoding results');
+        showStatus('⚠️ Could not extract location details. Please enter manually.', 'warning');
+    }
 }
 
 // Generate tax data based on county and city
