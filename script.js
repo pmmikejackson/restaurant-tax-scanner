@@ -599,13 +599,18 @@ function showDataError() {
 // Update the refreshTaxData function to use the official source
 async function refreshTaxData() {
     const refreshBtn = document.getElementById('refreshTaxData');
+    if (!refreshBtn) {
+        console.error('Refresh button not found');
+        return;
+    }
+    
     const originalText = refreshBtn.innerHTML;
     
     try {
-        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating from Official Source...';
+        refreshBtn.innerHTML = '🔄 Updating from Official Source...';
         refreshBtn.disabled = true;
         
-        const response = await fetch('/api/tax-data/update-official', {
+        const response = await fetch('http://localhost:3001/api/tax-data/update-official', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -615,31 +620,28 @@ async function refreshTaxData() {
         const result = await response.json();
         
         if (result.success) {
-            showNotification('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
+            showStatus('✅ Tax data updated successfully from Texas State Comptroller!', 'success');
             
-            // Show detailed results
+            // Show detailed results if available
             if (result.details) {
                 const details = result.details;
-                showNotification(
-                    `📊 Import Results: ${details.imported} imported, ${details.updated} updated, ${details.errors} errors`,
-                    'info'
-                );
+                setTimeout(() => {
+                    showStatus(
+                        `📊 Import Results: ${details.imported || 0} imported, ${details.updated || 0} updated, ${details.errors || 0} errors`,
+                        'success'
+                    );
+                }, 2000);
             }
             
-            // Refresh the current search if there's one
-            const selectedCounty = document.getElementById('countySelect').value;
-            if (selectedCounty) {
-                await searchTaxes();
-            }
+            // Refresh data freshness display
+            loadDataFreshness();
             
-            // Update data freshness display
-            updateDataFreshnessDisplay();
         } else {
-            showNotification(`❌ Update failed: ${result.message}`, 'error');
+            showStatus(`❌ Update failed: ${result.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
         console.error('Error updating tax data:', error);
-        showNotification('❌ Error updating tax data. Please try again.', 'error');
+        showStatus('❌ Error updating tax data. Please check API server connection.', 'error');
     } finally {
         refreshBtn.innerHTML = originalText;
         refreshBtn.disabled = false;

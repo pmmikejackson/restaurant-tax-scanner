@@ -348,8 +348,7 @@ class TaxDataManager {
             console.log('Starting official Texas tax data update...');
             const result = await importer.updateTaxRates();
             
-            // Update our data freshness tracking
-            await this.updateDataFreshness('Texas State Comptroller', new Date().toISOString());
+            // Note: Data freshness is tracked automatically by the importer
             
             return {
                 success: true,
