@@ -12,7 +12,8 @@ const countyToCities = {
     'fort-bend': ['MISSOURI CITY', 'PEARLAND', 'RICHMOND', 'ROSENBERG', 'STAFFORD', 'SUGAR LAND'],
     'denton': ['CARROLLTON', 'DENTON', 'FLOWER MOUND', 'FRISCO', 'LEWISVILLE', 'THE COLONY'],
     'williamson': ['CEDAR PARK', 'GEORGETOWN', 'LEANDER', 'PFLUGERVILLE', 'ROUND ROCK', 'TAYLOR'],
-    'montgomery': ['CONROE', 'MONTGOMERY', 'SPRING', 'THE WOODLANDS', 'TOMBALL', 'WILLIS']
+    'montgomery': ['CONROE', 'MONTGOMERY', 'SPRING', 'THE WOODLANDS', 'TOMBALL', 'WILLIS'],
+    'rockwall': ['ROCKWALL']
 };
 
 // County name mapping for geocoding (updated to all caps)
@@ -26,7 +27,8 @@ const countyNameMapping = {
     'fort-bend': 'FORT BEND COUNTY',
     'denton': 'DENTON COUNTY',
     'williamson': 'WILLIAMSON COUNTY',
-    'montgomery': 'MONTGOMERY COUNTY'
+    'montgomery': 'MONTGOMERY COUNTY',
+    'rockwall': 'ROCKWALL COUNTY'
 };
 
 // Reverse mapping from display names to slugs (updated to all caps)
@@ -40,7 +42,8 @@ const countyDisplayToSlug = {
     'FORT BEND COUNTY': 'fort-bend',
     'DENTON COUNTY': 'denton',
     'WILLIAMSON COUNTY': 'williamson',
-    'MONTGOMERY COUNTY': 'montgomery'
+    'MONTGOMERY COUNTY': 'montgomery',
+    'ROCKWALL COUNTY': 'rockwall'
 };
 
 // Function to convert county display name to slug
@@ -303,7 +306,7 @@ function populateCityDropdown(cities) {
 }
 
 // Main scan function
-function scanTaxes() {
+async function scanTaxes() {
     const countyDisplay = document.getElementById('county').value;
     const county = getCountySlug(countyDisplay);
     const city = document.getElementById('city').value;
@@ -316,18 +319,117 @@ function scanTaxes() {
 
     showLoading(true);
     
-    setTimeout(() => {
+    try {
+        // Try to use the API server first
+        const response = await fetch(`http://localhost:3001/api/tax-data/comprehensive-rate?county=${encodeURIComponent(county)}&city=${encodeURIComponent(city)}&zip=${encodeURIComponent(zip)}`);
+        
+        if (response.ok) {
+            const apiData = await response.json();
+            
+            if (apiData && apiData.total_rate) {
+                // Transform API data to match our frontend format
+                const taxes = [];
+                
+                // Add state taxes
+                if (apiData.breakdown.state) {
+                    apiData.breakdown.state.forEach(tax => {
+                        taxes.push({
+                            name: tax.name,
+                            rate: tax.rate,
+                            is_percentage: true,
+                            description: `State-level sales tax (${tax.authority})`,
+                            applies_to: 'All taxable sales',
+                            type: 'state'
+                        });
+                    });
+                }
+                
+                // Add county taxes
+                if (apiData.breakdown.county) {
+                    apiData.breakdown.county.forEach(tax => {
+                        taxes.push({
+                            name: tax.name,
+                            rate: tax.rate,
+                            is_percentage: true,
+                            description: `County-level sales tax (${tax.authority})`,
+                            applies_to: 'All taxable sales',
+                            type: 'county'
+                        });
+                    });
+                }
+                
+                // Add city taxes
+                if (apiData.breakdown.city) {
+                    apiData.breakdown.city.forEach(tax => {
+                        taxes.push({
+                            name: tax.name,
+                            rate: tax.rate,
+                            is_percentage: true,
+                            description: `City-level sales tax (${tax.authority})`,
+                            applies_to: 'All taxable sales',
+                            type: 'local'
+                        });
+                    });
+                }
+                
+                // Add special taxes
+                if (apiData.breakdown.special) {
+                    apiData.breakdown.special.forEach(tax => {
+                        taxes.push({
+                            name: tax.name,
+                            rate: tax.rate,
+                            is_percentage: true,
+                            description: `Special district tax (${tax.authority})`,
+                            applies_to: 'All taxable sales',
+                            type: 'special'
+                        });
+                    });
+                }
+                
+                currentTaxData = {
+                    location: { county: countyDisplay, city, zip },
+                    taxes: taxes,
+                    totalRate: apiData.total_rate / 100, // Convert percentage to decimal
+                    scanDate: new Date().toISOString(),
+                    source: 'database'
+                };
+                displayTaxes(currentTaxData);
+                showLoading(false);
+                showStatus('✅ Tax scan completed using official database!', 'success');
+                return;
+            }
+        }
+        
+        // Fallback to static data if API is not available
+        console.warn('API not available, falling back to static data');
         const taxData = generateTaxData(county, city, zip);
         currentTaxData = {
             location: { county: countyDisplay, city, zip },
             taxes: taxData.taxes,
             totalRate: taxData.totalRate,
-            scanDate: new Date().toISOString()
+            scanDate: new Date().toISOString(),
+            source: 'static'
         };
         displayTaxes(currentTaxData);
         showLoading(false);
-        showStatus('Tax scan completed successfully!', 'success');
-    }, 2000);
+        showStatus('⚠️ Using limited static data. Start API server for complete data.', 'warning');
+        
+    } catch (error) {
+        console.error('Error fetching tax data:', error);
+        
+        // Fallback to static data
+        const taxData = generateTaxData(county, city, zip);
+        currentTaxData = {
+            location: { county: countyDisplay, city, zip },
+            taxes: taxData.taxes,
+            totalRate: taxData.totalRate,
+            scanDate: new Date().toISOString(),
+            source: 'static'
+        };
+        displayTaxes(currentTaxData);
+        showLoading(false);
+        showStatus('⚠️ Using limited static data. Check API server connection.', 'warning');
+    }
 }
 
 // Display taxes function

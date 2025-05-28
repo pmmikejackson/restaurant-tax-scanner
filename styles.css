@@ -309,6 +309,12 @@ body {
     border: 1px solid #f5c6cb;
 }
 
+.status-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
 /* Searchable input styling */
 .select-wrapper {
     position: relative;
